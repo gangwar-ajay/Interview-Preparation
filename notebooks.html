@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colab Notebooks — InterviewPrep</title>
+<meta name="description" content="Companion Google Colab notebooks for the PyTorch snippets that can't run in the browser — one click to run them on free GPUs.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="assets/site.js"></script>
+<style>
+  .nb-card {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .nb-card h3 { margin: 0 0 6px; font-size: 1rem; }
+  .nb-card p { margin: 0 0 12px; color: var(--text-secondary); font-size: 0.9rem; }
+  .nb-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .nb-actions .colab-link { font-weight: 600; }
+  .nb-actions .qlink { font-size: 0.85rem; color: var(--accent); text-decoration: none; }
+  .nb-actions .qlink:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="index.html">Interview<span>Prep</span></a>
+    <div class="site-nav">
+      <a class="nav-link" href="playground.html">🐍 Playground</a>
+      <button id="theme-toggle" type="button">☾ Dark</button>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>📓 Colab Notebooks</h1>
+    <p>NumPy and pandas snippets run right on this site — but
+    <strong>PyTorch has no in-browser build</strong>, so those examples live as
+    Google Colab notebooks instead. One click opens them on Colab's free GPUs
+    with PyTorch preinstalled; you get your own editable copy.</p>
+  </div>
+
+  <div class="nb-card">
+    <h3>Perplexity of GPT-2 on real sentences</h3>
+    <p>Load GPT-2 with 🤗 Transformers, compute perplexity from the model's
+    loss, and compare predictable English against word salad — the hands-on
+    companion to the perplexity explainer.</p>
+    <div class="nb-actions">
+      <a class="colab-link" target="_blank" rel="noopener"
+         href="https://colab.research.google.com/github/gangwar-ajay/Interview-Preparation/blob/main/notebooks/perplexity-gpt2.ipynb">Open in Google Colab ↗</a>
+      <a class="qlink" href="questions/perplexity.html">Read the explainer: What is perplexity in LLMs? →</a>
+    </div>
+  </div>
+
+  <div class="howto">
+    <strong>Browse everything at once:</strong> Colab can open this whole
+    repository — pick any notebook from
+    <a target="_blank" rel="noopener"
+       href="https://colab.research.google.com/github/gangwar-ajay/Interview-Preparation">colab.research.google.com/github/gangwar-ajay/Interview-Preparation</a>.
+    New notebooks are added whenever a question's code needs PyTorch.
+  </div>
+
+  <footer class="site">
+    <a href="index.html">← All questions</a>
+  </footer>
+</div>
+</body>
+</html>
