@@ -37,9 +37,16 @@ Ask the question in a Claude session on this repository. Claude will:
 
 ```
 index.html                  home page: search + topic filters + question list
+playground.html             in-browser Python editor/runner (Pyodide)
 assets/style.css            shared styles, light/dark themes
 assets/site.js              theme toggle + home-page list rendering
 assets/questions.js         question registry (one entry per answered question)
+assets/pyrunner.js          adds Run buttons to code blocks (Pyodide/WebAssembly)
 questions/_template.html    seven-section skeleton for new questions
 questions/*.html            one page per question
 ```
+
+Code blocks on question pages run in the browser via
+[Pyodide](https://pyodide.org) — NumPy/pandas/SciPy work; PyTorch and
+TensorFlow have no WebAssembly builds, so those snippets are marked
+"copy & run locally".

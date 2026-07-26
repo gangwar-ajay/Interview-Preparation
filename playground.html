@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Playground — InterviewPrep</title>
+<meta name="description" content="Run Python, NumPy, and pandas directly in your browser — no installation, powered by Pyodide (WebAssembly).">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="assets/site.js"></script>
+<script src="assets/pyrunner.js"></script>
+<style>
+  #editor {
+    width: 100%;
+    min-height: 300px;
+    resize: vertical;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+    background: var(--code-bg);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 18px;
+    tab-size: 4;
+  }
+  #editor:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pg-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+  .pg-controls button {
+    font: inherit; font-size: 0.9rem;
+    padding: 8px 18px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-primary);
+    cursor: pointer;
+  }
+  .pg-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .pg-controls button:disabled { opacity: 0.6; cursor: default; }
+  .pg-status { font-size: 0.85rem; color: var(--muted); }
+  #pg-out {
+    background: var(--code-bg);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 18px;
+    min-height: 70px;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    margin: 0;
+  }
+  .pg-note { font-size: 0.85rem; color: var(--text-secondary); margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="index.html">Interview<span>Prep</span></a>
+    <div class="site-nav">
+      <button id="theme-toggle" type="button">☾ Dark</button>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>🐍 Python Playground</h1>
+    <p>Run Python right here in your browser — no installation, nothing leaves
+    your machine. <strong>NumPy, pandas, SciPy, scikit-learn, SymPy</strong> are
+    auto-installed the moment your code imports them.</p>
+  </div>
+
+  <textarea id="editor" spellcheck="false" aria-label="Python code editor"># Try me — edit anything and press Run (or Ctrl+Enter)
+import numpy as np
+import pandas as pd
+
+# Softmax over random logits
+x = np.random.randn(5) * 2
+p = np.exp(x - x.max())
+p /= p.sum()
+
+df = pd.DataFrame({"logit": x.round(3), "softmax": p.round(3)})
+print(df)
+print("\nsum of probabilities =", p.sum())
+</textarea>
+
+  <div class="pg-controls">
+    <button id="pg-run" type="button" class="primary">▶ Run (Ctrl+Enter)</button>
+    <button id="pg-clear" type="button">Clear output</button>
+    <span class="pg-status" id="pg-status">Python loads on first run (~12 MB, then cached).</span>
+  </div>
+
+  <pre id="pg-out">Output will appear here.</pre>
+
+  <p class="pg-note"><strong>What works:</strong> Python 3.12 with the
+  scientific stack — anything imported is fetched automatically (numpy, pandas,
+  scipy, scikit-learn, sympy, networkx, and other
+  <a href="https://pyodide.org/en/stable/usage/packages-in-pyodide.html">Pyodide-packaged
+  libraries</a>). Use <code>print()</code> to see results.
+  <strong>What doesn't:</strong> PyTorch and TensorFlow (no WebAssembly builds
+  exist) — copy those snippets to a local machine or Colab. Plots don't display
+  here either; print numbers instead. Powered by
+  <a href="https://pyodide.org">Pyodide</a>, CPython compiled to WebAssembly.</p>
+
+  <footer class="site">
+    <a href="index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var editor = document.getElementById("editor");
+  var runBtn = document.getElementById("pg-run");
+  var out = document.getElementById("pg-out");
+  var statusEl = document.getElementById("pg-status");
+
+  async function run() {
+    runBtn.disabled = true;
+    out.textContent = "";
+    var lines = [];
+    function print(t) { lines.push(t); out.textContent = lines.join("\n"); }
+    try {
+      await PyRunner.execute(editor.value, print, function (st) { statusEl.textContent = st; });
+      if (!lines.length) print("(no output — use print() to see results)");
+      statusEl.textContent = "Done.";
+    } catch (e) {
+      print(String((e && e.message) || e));
+      statusEl.textContent = "Error — see output.";
+    }
+    runBtn.disabled = false;
+  }
+
+  runBtn.addEventListener("click", run);
+  document.getElementById("pg-clear").addEventListener("click", function () {
+    out.textContent = "Output will appear here.";
+  });
+  editor.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      var s = editor.selectionStart;
+      editor.setRangeText("    ", s, editor.selectionEnd, "end");
+    }
+  });
+})();
+</script>
+</body>
+</html>

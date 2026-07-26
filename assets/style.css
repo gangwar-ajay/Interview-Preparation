@@ -90,6 +90,9 @@ header.site a.brand {
   letter-spacing: -0.01em;
 }
 header.site a.brand span { color: var(--accent); }
+.site-nav { display: flex; align-items: center; gap: 14px; }
+.nav-link { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+.nav-link:hover { text-decoration: underline; }
 #theme-toggle {
   background: var(--surface);
   color: var(--text-secondary);
@@ -258,6 +261,26 @@ p code, li code {
   border-radius: 5px;
   padding: 1px 5px;
   font-size: 0.86em;
+}
+
+/* ---------- in-browser Python runner ---------- */
+.run-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.run-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.run-btn:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+.run-btn:disabled { background: var(--surface); border-color: var(--border); color: var(--muted); cursor: default; }
+pre.py-out {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  border-left: 3px solid var(--accent);
 }
 
 /* ---------- interactive viz shared chrome ---------- */
