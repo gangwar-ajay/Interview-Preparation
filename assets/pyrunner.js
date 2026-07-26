@@ -62,8 +62,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (UNRUNNABLE.test(code)) {
       btn.disabled = true;
-      btn.textContent = "PyTorch required — copy & run locally";
+      btn.textContent = "Needs PyTorch — can't run in browser";
       btn.title = "PyTorch has no browser (WebAssembly) build, so this snippet can't run here.";
+      if (pre.dataset.colab) {
+        var a = document.createElement("a");
+        a.className = "colab-link";
+        a.href = "https://colab.research.google.com/github/gangwar-ajay/Interview-Preparation/blob/main/notebooks/" +
+          pre.dataset.colab + ".ipynb";
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Open in Google Colab ↗";
+        a.title = "Runs this snippet as a notebook on Colab's free GPUs (PyTorch preinstalled).";
+        row.appendChild(a);
+      }
     } else {
       btn.textContent = "▶ Run";
       btn.addEventListener("click", async function () {

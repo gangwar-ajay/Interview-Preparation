@@ -168,8 +168,8 @@ print(perplexity(np.array([1.0, 1.0, 1.0])))      # 1.0  (perfect model)
 print(perplexity(np.full(3, 1/50000)))            # 50000.0 (uniform guessing)
 </code></pre>
       <p>And with a real model — perplexity of GPT-2 on a sentence (PyTorch has
-      no in-browser build, so run this one locally or on Colab):</p>
-<pre><code>import torch
+      no in-browser build, so open this one in Google Colab):</p>
+<pre data-colab="perplexity-gpt2"><code>import torch
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 tok = GPT2TokenizerFast.from_pretrained("gpt2")

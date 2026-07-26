@@ -47,6 +47,8 @@ questions/*.html            one page per question
 ```
 
 Code blocks on question pages run in the browser via
-[Pyodide](https://pyodide.org) — NumPy/pandas/SciPy work; PyTorch and
-TensorFlow have no WebAssembly builds, so those snippets are marked
-"copy & run locally".
+[Pyodide](https://pyodide.org) — NumPy/pandas/SciPy work. PyTorch and
+TensorFlow have no WebAssembly builds, so those snippets get an
+**"Open in Google Colab"** link instead: add a companion notebook under
+`notebooks/<name>.ipynb` and set `data-colab="<name>"` on the snippet's
+`<pre>` tag.

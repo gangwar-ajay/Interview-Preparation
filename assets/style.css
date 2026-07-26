@@ -282,6 +282,15 @@ pre.py-out {
   white-space: pre-wrap;
   border-left: 3px solid var(--accent);
 }
+.colab-link {
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--series-2);
+  color: var(--series-2);
+  text-decoration: none;
+}
+.colab-link:hover { background: var(--series-2); color: #fff; }
 
 /* ---------- interactive viz shared chrome ---------- */
 .viz {
