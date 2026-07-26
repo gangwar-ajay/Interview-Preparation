@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is online softmax vs normal softmax? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<style>
+  .os-chart {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 130px; padding-top: 20px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .os-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; }
+  .os-bar { width: 70%; max-width: 40px; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--hairline); transition: height 0.25s, background 0.25s; }
+  .os-col.done .os-bar { background: var(--accent); }
+  .os-col.cur .os-bar { background: var(--series-2); }
+  .os-lab { position: absolute; top: -18px; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .os-idx { display: flex; gap: 4px; margin: 4px 0 16px; }
+  .os-idx span { flex: 1; text-align: center; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .os-state {
+    display: flex; flex-wrap: wrap; gap: 20px; margin: 14px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .os-state .cell { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 16px; min-width: 110px; }
+  .os-state .cell b { display: block; font-size: 1.15rem; }
+  .os-state .cell small { color: var(--muted); font-size: 0.75rem; }
+  .os-state .cell.flash { outline: 2px solid var(--series-2); }
+  .os-event { min-height: 2.6em; }
+  .os-h { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin: 18px 0 4px; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .cmp > div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 0.88rem; color: var(--text-secondary); }
+  .cmp b { color: var(--text-primary); display: block; margin-bottom: 6px; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <button id="theme-toggle" type="button">☾ Dark</button>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is online softmax, and how is it different from normal softmax?</h1>
+    <p class="q-topic">Deep Learning · softmax · FlashAttention · numerical stability · GPU kernels</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p><strong>Softmax</strong> turns a vector of scores (logits) into a
+      probability distribution: each element becomes
+      <code>exp(xᵢ − m) / Σⱼ exp(xⱼ − m)</code>, where subtracting the maximum
+      <code>m</code> prevents overflow ("safe softmax"). Computed the
+      <strong>normal</strong> way this needs <strong>three passes</strong> over
+      the data: one to find the max, one to sum the exponentials, one to
+      normalize — so the whole vector must be available (materialized in
+      memory) before you can start.</p>
+      <p><strong>Online softmax</strong> produces the <em>exact same result</em>
+      in a <strong>single streaming pass</strong>. It maintains just two running
+      scalars — the max <code>m</code> and the denominator <code>d</code> — and
+      when a new element beats the current max, it <strong>rescales</strong> the
+      accumulated denominator by <code>exp(m_old − m_new)</code> instead of
+      starting over. The difference is purely computational, not mathematical:
+      same output, but O(1) extra memory, one pass, and no need to ever hold the
+      full vector — which is what lets FlashAttention compute attention without
+      materializing the n×n score matrix.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>You're judging <strong>auditions that arrive one at a time</strong>,
+      and to keep numbers manageable you score everyone <em>relative to the best
+      act so far</em>. You keep two sticky notes: "best so far" and a running
+      total of relative scores. When contestant #7 blows the current champion
+      away, you don't call back contestants 1–6 to re-judge them (that's normal
+      softmax's extra pass). Instead you do one currency conversion: your whole
+      running total was measured in "old-champion units," so you multiply it
+      once by the exchange rate <code>exp(old best − new best)</code> and carry
+      on. When the last act finishes, your total is exactly what a judge who had
+      seen everyone up front would have computed — but you only ever needed two
+      sticky notes, no matter how long the line was.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Step through a stream of logits. Watch the running max <code>m</code>
+      and denominator <code>d</code> update — and when a new element takes the
+      lead, see <code>d</code> get <strong>rescaled</strong> (orange flash) and
+      all previously computed probabilities shrink in one multiply. At the end,
+      the result is checked against ordinary three-pass softmax.</p>
+      <div class="viz">
+        <p class="viz-hint">Top: incoming logits (gray = not yet seen, blue = processed, orange = current). Bottom: the softmax estimate over elements seen so far.</p>
+        <div class="controls">
+          <button id="os-step" type="button" class="primary">Step</button>
+          <button id="os-auto" type="button">▶ Auto</button>
+          <button id="os-reset" type="button">Reset</button>
+          <button id="os-new" type="button">New logits</button>
+        </div>
+        <div class="os-h">Incoming logits xᵢ</div>
+        <div class="os-chart" id="os-in"></div>
+        <div class="os-idx" id="os-in-idx"></div>
+        <div class="os-state">
+          <div class="cell" id="cell-i"><small>elements seen</small><b id="st-i">0 / 8</b></div>
+          <div class="cell" id="cell-m"><small>running max m</small><b id="st-m">−∞</b></div>
+          <div class="cell" id="cell-d"><small>running denom d</small><b id="st-d">0</b></div>
+        </div>
+        <div class="readout os-event" id="os-event">Press Step to process the first element.</div>
+        <div class="os-h">Softmax over elements seen so far</div>
+        <div class="os-chart" id="os-out" style="height:110px"></div>
+        <div class="os-idx" id="os-out-idx"></div>
+        <div class="readout" id="os-check"></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">1868–1902</div><div class="t-what">The functional form is the Boltzmann/Gibbs distribution from statistical mechanics; "softmax" as a neural-network output layer is popularized by John Bridle in 1989, and max-subtraction becomes the standard numerical-stability trick.</div></div>
+        <div class="t-row"><div class="t-when">2018</div><div class="t-what">Milakov &amp; Gimelshein (NVIDIA) publish <em>"Online normalizer calculation for softmax"</em> — the one-pass recurrence with max-rescaling, motivated by cutting memory traffic in GPU kernels.</div></div>
+        <div class="t-row"><div class="t-when">2022</div><div class="t-what">FlashAttention (Tri Dao et&nbsp;al.) combines online softmax with tiling: attention is computed block by block in fast on-chip SRAM, rescaling partial results as new blocks arrive, so the n×n attention matrix is never written to slow GPU memory — exact attention, 2–4× faster, O(n) memory.</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">Every serious LLM stack uses it: FlashAttention-2/3 (better parallelism, Hopper-specific speedups), and the same merge rule powers Ring Attention (streaming blocks <em>across GPUs</em> for million-token contexts) and paged/chunked inference kernels.</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">The pattern — "stream blocks, keep running statistics, rescale on the fly" — is becoming a general recipe for low-precision (FP8/FP4) and hardware-aware kernels, and for any normalizer computed over data too big to hold at once.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Stream the logits <strong>[2, 1, 5, 3]</strong> one at a time, keeping max
+      <code>m</code> and denominator <code>d</code>:</p>
+      <ul>
+        <li><strong>x=2:</strong> first element → m = 2, d = e⁰ = 1</li>
+        <li><strong>x=1:</strong> no new max → d = 1 + e^(1−2) = 1 + 0.368 = 1.368</li>
+        <li><strong>x=5:</strong> new max! rescale: d = 1.368 · e^(2−5) + e⁰ = 0.068 + 1 = 1.068, m = 5</li>
+        <li><strong>x=3:</strong> no new max → d = 1.068 + e^(3−5) = 1.068 + 0.135 = 1.203</li>
+      </ul>
+      <p>Final probabilities: e^(xᵢ−5) / 1.203 → <strong>[0.041, 0.015, 0.831, 0.112]</strong>.
+      Normal softmax on the full vector gives exactly the same numbers — but it
+      first scanned all four values to find m = 5, then made a second pass to
+      build the sum. The online version never looked back: one rescale multiply
+      replaced a whole extra pass.</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Use cases</h2>
+      <ul>
+        <li><strong>FlashAttention:</strong> the flagship use — computing softmax(QKᵀ)V tile by tile in on-chip SRAM, making exact long-context attention memory-linear instead of quadratic.</li>
+        <li><strong>Ring / distributed attention:</strong> each GPU computes attention over its shard of a million-token context; the per-shard (m, d, partial output) triples are merged with the same rescaling rule.</li>
+        <li><strong>Chunked-prefill &amp; paged inference kernels</strong> (vLLM-style): scores over the KV cache are processed in pages that never coexist in fast memory.</li>
+        <li><strong>Huge output vocabularies:</strong> streaming log-sum-exp over millions of classes (extreme classification, retrieval scoring) without materializing all logits.</li>
+        <li><strong>Hardware accelerators:</strong> softmax units with tiny local buffers compute exact results over long vectors in one pass.</li>
+        <li><strong>Any streaming normalizer:</strong> numerically stable log-sum-exp over data arriving from disk or network, e.g. in probabilistic programming.</li>
+      </ul>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <p>Normal (safe, three-pass) softmax:</p>
+      <div class="formula">
+        m = max<sub>j</sub> x<sub>j</sub>,&nbsp;&nbsp;
+        d = Σ<sub>j</sub> e<sup>x<sub>j</sub>−m</sup>,&nbsp;&nbsp;
+        softmax(x)<sub>i</sub> = e<sup>x<sub>i</sub>−m</sup> / d
+      </div>
+      <p>Online softmax replaces the two reduction passes with one recurrence.
+      With m₀ = −∞, d₀ = 0, for each incoming xᵢ:</p>
+      <div class="formula">
+        m<sub>i</sub> = max(m<sub>i−1</sub>, x<sub>i</sub>),&nbsp;&nbsp;
+        d<sub>i</sub> = d<sub>i−1</sub> · e<sup>m<sub>i−1</sub>−m<sub>i</sub></sup> + e<sup>x<sub>i</sub>−m<sub>i</sub></sup>
+      </div>
+      <p>The rescale factor e^(mᵢ₋₁−mᵢ) is 1 when the max doesn't change and
+      shrinks the old sum exactly when it does — an inductive proof shows
+      (m<sub>N</sub>, d<sub>N</sub>) always equal the three-pass values. The same
+      trick merges two independently processed blocks, which is the FlashAttention
+      composition rule:</p>
+<pre><code>import numpy as np
+
+def softmax_normal(x):
+    """Safe softmax: needs the whole vector, three passes."""
+    m = np.max(x)                    # pass 1: find max
+    e = np.exp(x - m)                # pass 2: exponentiate & sum
+    return e / e.sum()               # pass 3: normalize
+
+def softmax_online(stream):
+    """One pass, O(1) state — works on any iterable, even one you can't rewind."""
+    m, d, seen = -np.inf, 0.0, []
+    for x in stream:
+        m_new = max(m, x)
+        d = d * np.exp(m - m_new) + np.exp(x - m_new)   # rescale + accumulate
+        m, _ = m_new, seen.append(x)
+    return np.exp(np.array(seen) - m) / d
+
+def merge_blocks(m1, d1, m2, d2):
+    """FlashAttention's rule: combine stats of two blocks processed separately."""
+    m = max(m1, m2)
+    return m, d1 * np.exp(m1 - m) + d2 * np.exp(m2 - m)
+
+x = np.random.randn(1000) * 5
+assert np.allclose(softmax_normal(x), softmax_online(x))   # identical results
+
+# Blockwise == full-vector: the property FlashAttention is built on
+mA, dA = x[:500].max(), np.exp(x[:500] - x[:500].max()).sum()
+mB, dB = x[500:].max(), np.exp(x[500:] - x[500:].max()).sum()
+m, d = merge_blocks(mA, dA, mB, dB)
+assert np.isclose(d, np.exp(x - m).sum())
+print("online == normal, blocks merge exactly ✓")
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var N = 8;
+  var logits = [];
+  var st; // {i, m, d, timer}
+  var inChart = document.getElementById("os-in");
+  var inIdx = document.getElementById("os-in-idx");
+  var outChart = document.getElementById("os-out");
+  var outIdx = document.getElementById("os-out-idx");
+  var stI = document.getElementById("st-i"), stM = document.getElementById("st-m"), stD = document.getElementById("st-d");
+  var cellD = document.getElementById("cell-d");
+  var eventEl = document.getElementById("os-event");
+  var checkEl = document.getElementById("os-check");
+  var autoBtn = document.getElementById("os-auto");
+
+  var inCols = [], inLabs = [], outCols = [];
+  for (var i = 0; i < N; i++) {
+    var c = document.createElement("div");
+    c.className = "os-col";
+    var lab = document.createElement("div"); lab.className = "os-lab";
+    var bar = document.createElement("div"); bar.className = "os-bar";
+    c.appendChild(lab); c.appendChild(bar);
+    inChart.appendChild(c); inCols.push(c); inLabs.push(lab);
+    var s = document.createElement("span"); s.textContent = "x" + (i + 1); inIdx.appendChild(s);
+
+    var oc = document.createElement("div");
+    oc.className = "os-col done";
+    var ob = document.createElement("div"); ob.className = "os-bar";
+    oc.appendChild(ob);
+    outChart.appendChild(oc); outCols.push(oc);
+    var os = document.createElement("span"); os.textContent = "p" + (i + 1); outIdx.appendChild(os);
+  }
+
+  function newLogits() {
+    logits = [];
+    for (var i = 0; i < N; i++) logits.push(Math.round((Math.random() * 10 - 4) * 10) / 10);
+    reset();
+  }
+
+  function stopAuto() {
+    if (st && st.timer) { clearInterval(st.timer); st.timer = null; }
+    autoBtn.textContent = "▶ Auto";
+  }
+
+  function reset() {
+    stopAuto();
+    st = { i: 0, m: -Infinity, d: 0, timer: null };
+    eventEl.textContent = "Press Step to process the first element.";
+    checkEl.textContent = "";
+    render();
+  }
+
+  function fmt(v) { return v === -Infinity ? "−∞" : (Math.round(v * 1000) / 1000).toString(); }
+
+  function render(flash) {
+    var lo = Math.min.apply(null, logits), hi = Math.max.apply(null, logits);
+    logits.forEach(function (x, i) {
+      var h = 8 + (x - lo) / (hi - lo || 1) * 92;
+      inCols[i].className = "os-col" + (i < st.i ? " done" : "") + (i === st.i - 1 ? " cur" : "");
+      inCols[i].querySelector(".os-bar").style.height = h + "px";
+      inLabs[i].textContent = x;
+    });
+
+    stI.textContent = st.i + " / " + N;
+    stM.textContent = fmt(st.m);
+    stD.textContent = fmt(st.d);
+    cellD.className = "cell" + (flash ? " flash" : "");
+
+    // Current softmax estimate over the processed prefix
+    var pmax = 0, probs = [];
+    for (var i = 0; i < N; i++) {
+      var p = i < st.i ? Math.exp(logits[i] - st.m) / st.d : 0;
+      probs.push(p); pmax = Math.max(pmax, p);
+    }
+    probs.forEach(function (p, i) {
+      var bar = outCols[i].querySelector(".os-bar");
+      bar.style.height = (p > 0 ? 6 + p / pmax * 84 : 2) + "px";
+      outCols[i].title = p > 0 ? "p" + (i + 1) + " = " + (p * 100).toFixed(1) + "%" : "";
+    });
+
+    if (st.i === N) {
+      // Verify against ordinary three-pass softmax
+      var m = Math.max.apply(null, logits);
+      var d = logits.reduce(function (a, x) { return a + Math.exp(x - m); }, 0);
+      var maxErr = 0;
+      logits.forEach(function (x, i) {
+        maxErr = Math.max(maxErr, Math.abs(Math.exp(x - m) / d - probs[i]));
+      });
+      checkEl.textContent = "✓ Done in one pass. Matches three-pass softmax (max difference " +
+        maxErr.toExponential(1) + ").";
+    }
+  }
+
+  function step() {
+    if (st.i >= N) { stopAuto(); return; }
+    var x = logits[st.i];
+    var mNew = Math.max(st.m, x);
+    var rescale = st.m !== -Infinity && mNew > st.m;
+    var dOld = st.d;
+    st.d = st.d * Math.exp(st.m === -Infinity ? 0 : st.m - mNew) + Math.exp(x - mNew);
+    var mOld = st.m;
+    st.m = mNew;
+    st.i++;
+
+    eventEl.textContent = rescale
+      ? "x" + st.i + " = " + x + " is a NEW MAX → rescale: d = " + fmt(dOld) +
+        " · e^(" + fmt(mOld) + "−" + fmt(mNew) + ") + 1 = " + fmt(st.d) +
+        ". All earlier probabilities shrink by that factor."
+      : "x" + st.i + " = " + x + " ≤ m → just accumulate: d += e^(" + x + "−" + fmt(st.m) + ") → " + fmt(st.d);
+    render(rescale);
+  }
+
+  document.getElementById("os-step").addEventListener("click", function () { stopAuto(); step(); });
+  autoBtn.addEventListener("click", function () {
+    if (st.timer) { stopAuto(); return; }
+    if (st.i >= N) reset();
+    st.timer = setInterval(step, 1000);
+    autoBtn.textContent = "❚❚ Pause";
+  });
+  document.getElementById("os-reset").addEventListener("click", reset);
+  document.getElementById("os-new").addEventListener("click", newLogits);
+
+  logits = [2, 1, 5, 3, -1, 4.5, 0.5, 3.5];   // first run mirrors the worked example
+  reset();
+})();
+</script>
+</body>
+</html>
