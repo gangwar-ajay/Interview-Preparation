@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is the attention mechanism in Transformers? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<style>
+  .tokens { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .tokens button {
+    font: inherit; font-size: 0.9rem;
+    padding: 5px 12px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-primary);
+    cursor: pointer;
+  }
+  .tokens button[aria-pressed="true"] {
+    background: var(--series-2); border-color: var(--series-2); color: #fff; font-weight: 600;
+  }
+  .attn-chart {
+    display: flex; align-items: flex-end; gap: 2px;
+    height: 170px; padding-top: 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .attn-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; }
+  .attn-bar {
+    width: 70%; max-width: 34px; min-height: 2px;
+    background: var(--accent);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.25s;
+  }
+  .attn-col.self .attn-bar { background: var(--series-2); }
+  .attn-label {
+    position: absolute; top: -20px; font-size: 0.75rem; font-weight: 600;
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
+  }
+  .attn-words { display: flex; gap: 2px; margin-top: 6px; }
+  .attn-words span {
+    flex: 1; text-align: center; font-size: 0.72rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .attn-words span.sel { color: var(--series-2); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <button id="theme-toggle" type="button">☾ Dark</button>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is the attention mechanism in Transformers?</h1>
+    <p class="q-topic">Deep Learning · transformers · attention · LLMs</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p><strong>Attention</strong> is a mechanism that lets a model, when
+      processing one token, look at <em>every other token</em> in the sequence
+      and decide — with learned, continuous weights — how much each one matters
+      for understanding the current token. Each token emits a <strong>query</strong>
+      ("what am I looking for?"), a <strong>key</strong> ("what do I contain?"),
+      and a <strong>value</strong> ("what information do I pass along?"). The
+      output for a token is a weighted average of all values, where the weights
+      come from how well its query matches each key. <strong>Self-attention</strong>
+      is this operation applied within a single sequence, and it is the core
+      building block of the Transformer architecture behind GPT, Claude, BERT,
+      and modern LLMs.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>Imagine a <strong>meeting room</strong> where every word of a sentence
+      is a person. When it's your turn to speak (be processed), you don't listen
+      to everyone equally — you hold up a card saying what you need
+      (<em>query</em>), everyone else wears a badge saying what they know
+      (<em>key</em>), and you turn your ears toward the people whose badges best
+      match your card. What you actually take away from each person is what they
+      say (<em>value</em>), blended in proportion to how much you attended to
+      them. The word <em>"it"</em> holds up a card reading "I need my referent" —
+      and the person wearing the <em>"ball"</em> badge gets most of its
+      attention.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Click any word to see where its attention goes. Drag the temperature
+      slider to see how the softmax sharpens (low) or flattens (high) the
+      distribution — the same role <code>1/√d<sub>k</sub></code> plays in the
+      real formula.</p>
+      <div class="viz">
+        <p class="viz-hint">Attention weights from the selected word (orange) to every word in the sentence. Bars sum to 100%.</p>
+        <div class="tokens" id="tokens" role="group" aria-label="Pick a word"></div>
+        <div class="controls">
+          <label>Softmax temperature
+            <input type="range" id="temp" min="0.3" max="3" step="0.1" value="1">
+            <output id="temp-out">1.0</output>
+          </label>
+        </div>
+        <div class="attn-chart" id="attn-chart"></div>
+        <div class="attn-words" id="attn-words"></div>
+        <div class="readout" id="attn-readout"></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">2014</div><div class="t-what">Bahdanau et&nbsp;al. add attention to RNN encoder–decoders so machine translation can "look back" at source words instead of squeezing everything into one fixed vector.</div></div>
+        <div class="t-row"><div class="t-when">2017</div><div class="t-what"><em>"Attention Is All You Need"</em> (Vaswani et&nbsp;al.) removes recurrence entirely: the Transformer is built purely from self-attention + feed-forward layers, unlocking massive parallelism on GPUs.</div></div>
+        <div class="t-row"><div class="t-when">2018–2020</div><div class="t-what">BERT (bidirectional attention) and GPT (causal/masked attention) show that pre-trained Transformers transfer to nearly every NLP task; scaling laws emerge.</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">All frontier LLMs are attention-based. Engineering focuses on taming its O(n²) cost: FlashAttention (IO-aware kernels), grouped-query &amp; multi-query attention, sliding-window and sparse attention, KV-cache compression — enabling million-token contexts.</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">Sub-quadratic challengers (state-space models like Mamba, linear attention, hybrid architectures) aim to keep attention's quality at far lower cost; expect hybrids where a few full-attention layers are mixed with cheap sequence-mixing layers.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Sentence: <em>"The robot picked up the ball because <strong>it</strong> was red."</em></p>
+      <p>To interpret <em>"it"</em>, the model must resolve what "it" refers to.
+      In self-attention, the query of <em>"it"</em> matches the keys of
+      <em>"ball"</em> and <em>"robot"</em>; because "red" describes objects, not
+      robots, the trained weights push most attention onto <em>"ball"</em>. The
+      output vector for "it" then <em>becomes mostly a blend of "ball"'s value</em>
+      — the model has effectively performed coreference resolution in one matrix
+      multiply. (Try clicking "it" in the visualization above.)</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Use cases</h2>
+      <ul>
+        <li><strong>Large language models</strong> (Claude, GPT): every generated token attends over the whole prompt — this is what makes long-context reasoning possible.</li>
+        <li><strong>Machine translation &amp; summarization:</strong> cross-attention lets the decoder consult the source text while writing the output.</li>
+        <li><strong>Vision Transformers (ViT):</strong> image patches attend to each other, replacing convolutions for classification and detection.</li>
+        <li><strong>Speech &amp; audio</strong> (Whisper): attention aligns audio frames with output text.</li>
+        <li><strong>Biology</strong> (AlphaFold): attention over amino-acid pairs helps predict 3-D protein structure.</li>
+        <li><strong>Recommendation systems:</strong> attention over a user's interaction history weighs which past behavior predicts the next click.</li>
+      </ul>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <div class="formula">
+        Attention(<span class="var">Q</span>, <span class="var">K</span>, <span class="var">V</span>) =
+        softmax(<span class="var">Q K</span><sup>T</sup> / √<span class="var">d</span><sub>k</sub>) <span class="var">V</span>
+      </div>
+      <p><span class="var">Q</span> = queries, <span class="var">K</span> = keys,
+      <span class="var">V</span> = values (each is the token matrix times a learned
+      projection); <span class="var">d</span><sub>k</sub> is the key dimension. Dividing by
+      √<span class="var">d</span><sub>k</sub> keeps dot products in a range where softmax
+      has healthy gradients — exactly the "temperature" you dragged above.</p>
+<pre><code># Scaled dot-product self-attention in plain NumPy
+import numpy as np
+
+def softmax(x, axis=-1):
+    x = x - x.max(axis=axis, keepdims=True)      # numerical stability
+    e = np.exp(x)
+    return e / e.sum(axis=axis, keepdims=True)
+
+def self_attention(X, Wq, Wk, Wv):
+    """X: (seq_len, d_model). Wq/Wk/Wv: learned (d_model, d_k) projections."""
+    Q, K, V = X @ Wq, X @ Wk, X @ Wv             # project tokens
+    scores = Q @ K.T / np.sqrt(K.shape[-1])      # (seq_len, seq_len) affinities
+    weights = softmax(scores, axis=-1)           # each row sums to 1
+    return weights @ V, weights                  # blended values + attn map
+
+rng = np.random.default_rng(0)
+d_model, d_k, seq_len = 16, 8, 5
+X = rng.normal(size=(seq_len, d_model))          # 5 token embeddings
+Wq, Wk, Wv = (rng.normal(size=(d_model, d_k)) for _ in range(3))
+
+out, attn = self_attention(X, Wq, Wk, Wv)
+print(attn.round(2))    # rows = "who each token attends to"
+print(attn.sum(axis=1)) # -> all 1.0
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var words = ["The", "robot", "picked", "up", "the", "ball", "because", "it", "was", "red"];
+  var n = words.length;
+
+  // Hand-crafted affinity logits (what a trained head might produce).
+  // A[i][j] = how relevant word j is to word i, before softmax.
+  var A = [];
+  for (var i = 0; i < n; i++) { A.push(new Array(n).fill(0)); A[i][i] = 0.8; }
+  function set(i, pairs) { pairs.forEach(function (p) { A[i][p[0]] = p[1]; }); }
+  set(0, [[1, 2.0]]);                              // The -> robot
+  set(1, [[0, 1.5], [2, 1.6]]);                    // robot -> The, picked
+  set(2, [[1, 2.5], [5, 2.2], [3, 1.8]]);          // picked -> robot, ball, up
+  set(3, [[2, 2.5]]);                              // up -> picked
+  set(4, [[5, 2.0]]);                              // the -> ball
+  set(5, [[4, 1.5], [2, 1.8], [9, 1.4]]);          // ball -> the, picked, red
+  set(6, [[8, 1.0], [2, 1.2]]);                    // because -> was, picked
+  set(7, [[5, 3.2], [1, 1.2], [8, 0.8]]);          // it -> ball, robot, was
+  set(8, [[7, 2.0], [9, 1.8]]);                    // was -> it, red
+  set(9, [[5, 2.8], [7, 1.6], [8, 1.5]]);          // red -> ball, it, was
+
+  var selected = 7; // start on "it" — the interesting one
+  var tokensEl = document.getElementById("tokens");
+  var chartEl = document.getElementById("attn-chart");
+  var wordsEl = document.getElementById("attn-words");
+  var readoutEl = document.getElementById("attn-readout");
+  var tempEl = document.getElementById("temp");
+  var tempOut = document.getElementById("temp-out");
+
+  words.forEach(function (w, i) {
+    var b = document.createElement("button");
+    b.textContent = w;
+    b.addEventListener("click", function () { selected = i; render(); });
+    tokensEl.appendChild(b);
+  });
+
+  var cols = [], labels = [], bottomWords = [];
+  words.forEach(function (w, i) {
+    var col = document.createElement("div");
+    col.className = "attn-col";
+    var lab = document.createElement("div");
+    lab.className = "attn-label";
+    var bar = document.createElement("div");
+    bar.className = "attn-bar";
+    col.appendChild(lab); col.appendChild(bar);
+    chartEl.appendChild(col);
+    cols.push(col); labels.push(lab);
+
+    var span = document.createElement("span");
+    span.textContent = w;
+    wordsEl.appendChild(span);
+    bottomWords.push(span);
+  });
+
+  function softmax(row, t) {
+    var m = Math.max.apply(null, row);
+    var e = row.map(function (x) { return Math.exp((x - m) / t); });
+    var s = e.reduce(function (a, b) { return a + b; }, 0);
+    return e.map(function (x) { return x / s; });
+  }
+
+  function render() {
+    var t = parseFloat(tempEl.value);
+    tempOut.textContent = t.toFixed(1);
+    var w = softmax(A[selected], t);
+    var max = Math.max.apply(null, w);
+    var top = w.indexOf(max);
+
+    tokensEl.querySelectorAll("button").forEach(function (b, i) {
+      b.setAttribute("aria-pressed", i === selected ? "true" : "false");
+    });
+
+    w.forEach(function (v, i) {
+      var col = cols[i];
+      col.className = "attn-col" + (i === selected ? " self" : "");
+      var bar = col.querySelector(".attn-bar");
+      bar.style.height = (v / max * 130) + "px";
+      col.title = "“" + words[selected] + "” → “" + words[i] + "”: " + (v * 100).toFixed(1) + "%";
+      // Selective direct label: only the top-attended word gets a number.
+      labels[i].textContent = i === top ? (v * 100).toFixed(0) + "%" : "";
+      bottomWords[i].className = i === selected ? "sel" : "";
+    });
+
+    readoutEl.textContent = "“" + words[selected] + "” attends most to “" +
+      words[top] + "” (" + (max * 100).toFixed(1) + "%). Hover a bar for exact weights.";
+  }
+
+  tempEl.addEventListener("input", render);
+  render();
+})();
+</script>
+</body>
+</html>
