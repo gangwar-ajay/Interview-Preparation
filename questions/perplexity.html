@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is perplexity in LLMs? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<style>
+  .ppl-hero {
+    display: flex; flex-wrap: wrap; gap: 24px; align-items: center;
+    margin-bottom: 18px;
+  }
+  .ppl-num { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; }
+  .ppl-num small { font-size: 0.95rem; font-weight: 400; color: var(--muted); display: block; letter-spacing: 0; }
+  .ppl-caption { font-size: 0.9rem; color: var(--text-secondary); max-width: 34ch; }
+  .dice-grid { display: grid; grid-template-columns: repeat(10, 10px); gap: 4px; }
+  .dice-grid i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); opacity: 0.85; }
+  .tok-chart {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 150px; padding-top: 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .tok-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; cursor: pointer; }
+  .tok-bar { width: 70%; max-width: 44px; min-height: 2px; background: var(--accent); border-radius: 4px 4px 0 0; transition: height 0.2s; }
+  .tok-col.sel .tok-bar { background: var(--series-2); }
+  .tok-label { position: absolute; top: -20px; font-size: 0.75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tok-words { display: flex; gap: 6px; margin-top: 6px; }
+  .tok-words span { flex: 1; text-align: center; font-size: 0.78rem; color: var(--muted); }
+  .tok-words span.sel { color: var(--series-2); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <button id="theme-toggle" type="button">☾ Dark</button>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is perplexity in LLMs?</h1>
+    <p class="q-topic">LLMs · evaluation · language modeling · information theory</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p><strong>Perplexity (PPL)</strong> measures how well a language model
+      predicts text: it is the exponentiated average negative log-likelihood the
+      model assigns to each token of a held-out sequence. Intuitively, a
+      perplexity of <em>k</em> means the model is, on average, as uncertain
+      about the next token as if it were choosing uniformly among
+      <strong><em>k</em> equally likely options</strong> — its "effective
+      branching factor." <strong>Lower is better</strong>: a perfect model that
+      assigns probability 1 to every actual token has perplexity 1; a model
+      guessing uniformly over a 50,000-token vocabulary has perplexity 50,000.
+      Because it is just the exponential of cross-entropy loss, perplexity is
+      the standard intrinsic metric for comparing language models and tracking
+      pre-training progress.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>Think of the model as playing a <strong>guessing game</strong> at every
+      word, and perplexity as the <strong>size of the die it's effectively
+      rolling</strong>. If a friend says "peanut butter and …", you'd bet almost
+      everything on "jelly" — you're rolling a tiny 2-sided die (low
+      perplexity). If they say "my favorite word is …", you're rolling a die
+      with thousands of faces (high perplexity). A better language model has
+      read enough to shrink the die at every position: where a weak model sees
+      hundreds of plausible continuations, a strong one sees three or four.
+      Perplexity is the average die size over an entire text.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Each bar is the probability the model gave to the token that
+      <em>actually</em> came next in "The cat sat on the mat". Drag
+      <strong>model skill</strong> from a clueless model (uniform over a
+      100-word vocabulary) to a well-trained one, and watch the perplexity — the
+      "effective die" of dots — collapse. Click a token to inspect its
+      contribution.</p>
+      <div class="viz">
+        <p class="viz-hint">Bars: probability assigned to each true next token. Dots: perplexity rendered as "choosing among N equally likely words" (capped at 100).</p>
+        <div class="controls">
+          <label>Model skill
+            <input type="range" id="skill" min="0" max="1" step="0.01" value="0.85">
+            <output id="skill-out">85%</output>
+          </label>
+        </div>
+        <div class="ppl-hero">
+          <div class="ppl-num"><span id="ppl-val">–</span><small>perplexity</small></div>
+          <div class="dice-grid" id="dice" aria-hidden="true"></div>
+          <div class="ppl-caption" id="ppl-caption"></div>
+        </div>
+        <div class="tok-chart" id="tok-chart"></div>
+        <div class="tok-words" id="tok-words"></div>
+        <div class="readout" id="tok-readout">Click a token to see its probability and surprisal.</div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">1948–1951</div><div class="t-what">Claude Shannon founds information theory and estimates the entropy of English (~1 bit per letter) with human next-letter guessing games — the conceptual root of perplexity.</div></div>
+        <div class="t-row"><div class="t-when">1970s–80s</div><div class="t-what">Fred Jelinek's speech-recognition group at IBM adopts perplexity as the standard way to evaluate n-gram language models — easier to measure than recognition accuracy but well correlated with it.</div></div>
+        <div class="t-row"><div class="t-when">1990s–2010s</div><div class="t-what">Perplexity on benchmarks like Penn Treebank and WikiText becomes the leaderboard metric as LMs evolve from n-grams to RNNs/LSTMs to Transformers (GPT-2 famously reports state-of-the-art zero-shot perplexities in 2019).</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">Held-out loss (log-perplexity) is the quantity that <em>scaling laws</em> (Kaplan 2020, Chinchilla 2022) predict from model size, data, and compute — it drives frontier-lab training decisions. Two caveats are now well understood: it's tokenizer-dependent (not comparable across different vocabularies) and low perplexity ≠ helpful, safe, or factual — which is why capability benchmarks and human evals matter too. Perplexity-based signals are also used to filter pre-training data and to flag AI-generated text (which tends to be unusually low-perplexity).</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">Perplexity stays central to pre-training (the "compression = intelligence" view), but evaluation increasingly decouples from it: post-trained chat models are judged by task success, reasoning benchmarks, and preference models, since RLHF can even <em>raise</em> perplexity on raw text while making the model more useful.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Suppose a model reads the 3-token text <em>"I love pizza"</em> and assigns
+      the actual tokens these probabilities:</p>
+      <ul>
+        <li>p("I") = 0.5 → surprisal = log₂(1/0.5) = <strong>1 bit</strong></li>
+        <li>p("love" | "I") = 0.25 → surprisal = <strong>2 bits</strong></li>
+        <li>p("pizza" | "I love") = 0.125 → surprisal = <strong>3 bits</strong></li>
+      </ul>
+      <p>Average surprisal (cross-entropy) = (1 + 2 + 3) / 3 = <strong>2 bits per
+      token</strong>. Perplexity = 2² = <strong>4</strong> — the model was, on
+      average, as uncertain as picking among 4 equally likely words. If a second
+      model assigns each token probability 0.5, its perplexity is 2 — the lower
+      number tells us it's the better predictor of this text.</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Use cases</h2>
+      <ul>
+        <li><strong>Model comparison &amp; ablations:</strong> the quickest apples-to-apples way to compare two checkpoints with the same tokenizer on the same held-out set.</li>
+        <li><strong>Training monitoring:</strong> validation perplexity curves signal convergence, overfitting, and data-quality problems during pre-training.</li>
+        <li><strong>Scaling laws:</strong> fitting loss-vs-compute curves to decide how big a model to train and on how much data (Chinchilla-optimal ratios).</li>
+        <li><strong>Data filtering:</strong> scoring web documents with a reference LM and dropping ultra-high-perplexity (junk) or ultra-low-perplexity (boilerplate/duplicate) text.</li>
+        <li><strong>Domain-shift detection:</strong> a spike in perplexity on incoming traffic tells you users' text no longer looks like the training data.</li>
+        <li><strong>AI-text detection:</strong> tools like GPTZero use low perplexity (plus low variance, "burstiness") as evidence text was machine-generated.</li>
+        <li><strong>Speech recognition &amp; autocomplete:</strong> lower-perplexity LMs make better rescoring and keyboard suggestions — the metric's original home.</li>
+      </ul>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <div class="formula">
+        PPL(<span class="var">w</span><sub>1:N</sub>) =
+        exp( − (1/<span class="var">N</span>) Σ<sub>i=1..N</sub>
+        ln <span class="var">p</span>(<span class="var">w</span><sub>i</sub> | <span class="var">w</span><sub>&lt;i</sub>) )
+      </div>
+      <p>Equivalently, PPL = 2<sup>H</sup> where H is the cross-entropy in bits per
+      token, and PPL = exp(L) where L is the average training loss in nats — so
+      "loss 3.0" on a dashboard means perplexity e³ ≈ 20. It is also the inverse
+      geometric mean of the assigned probabilities: N tokens each given
+      probability 1/k yield PPL = k, the "k-sided die."</p>
+<pre><code>import numpy as np
+
+def perplexity(token_probs):
+    """token_probs: probability the model gave each ACTUAL token."""
+    nll = -np.log(token_probs)          # per-token surprisal (nats)
+    return float(np.exp(nll.mean()))    # exp of average NLL
+
+print(perplexity(np.array([0.5, 0.25, 0.125])))   # 4.0  (the example above)
+print(perplexity(np.array([1.0, 1.0, 1.0])))      # 1.0  (perfect model)
+print(perplexity(np.full(3, 1/50000)))            # 50000.0 (uniform guessing)
+
+# Real model, real text — perplexity of GPT-2 on a sentence:
+import torch
+from transformers import GPT2LMHeadModel, GPT2TokenizerFast
+
+tok = GPT2TokenizerFast.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2").eval()
+
+ids = tok("The cat sat on the mat.", return_tensors="pt").input_ids
+with torch.no_grad():
+    loss = model(ids, labels=ids).loss   # mean NLL per token (nats)
+print(torch.exp(loss).item())            # ~ 40–80: plain English is easy-ish
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var words = ["The", "cat", "sat", "on", "the", "mat"];
+  // Probability a well-trained model gives each actual next token.
+  var pGood = [0.15, 0.30, 0.45, 0.65, 0.55, 0.35];
+  var VOCAB = 100;
+  var selected = -1;
+
+  var chart = document.getElementById("tok-chart");
+  var wordsRow = document.getElementById("tok-words");
+  var skillEl = document.getElementById("skill");
+  var skillOut = document.getElementById("skill-out");
+  var pplVal = document.getElementById("ppl-val");
+  var pplCap = document.getElementById("ppl-caption");
+  var dice = document.getElementById("dice");
+  var readout = document.getElementById("tok-readout");
+
+  var cols = [], labels = [], bottom = [];
+  words.forEach(function (w, i) {
+    var col = document.createElement("div");
+    col.className = "tok-col";
+    var lab = document.createElement("div");
+    lab.className = "tok-label";
+    var bar = document.createElement("div");
+    bar.className = "tok-bar";
+    col.appendChild(lab); col.appendChild(bar);
+    col.addEventListener("click", function () { selected = selected === i ? -1 : i; render(); });
+    chart.appendChild(col);
+    cols.push(col); labels.push(lab);
+
+    var span = document.createElement("span");
+    span.textContent = w;
+    wordsRow.appendChild(span);
+    bottom.push(span);
+  });
+
+  for (var d = 0; d < 100; d++) dice.appendChild(document.createElement("i"));
+  var dots = dice.children;
+
+  function probs(s) {
+    // Log-space blend between uniform (1/VOCAB) and the good model.
+    return pGood.map(function (p) {
+      return Math.exp((1 - s) * Math.log(1 / VOCAB) + s * Math.log(p));
+    });
+  }
+
+  function render() {
+    var s = parseFloat(skillEl.value);
+    skillOut.textContent = Math.round(s * 100) + "%";
+    var p = probs(s);
+    var nll = p.map(function (x) { return -Math.log(x); });
+    var ppl = Math.exp(nll.reduce(function (a, b) { return a + b; }, 0) / p.length);
+
+    pplVal.textContent = ppl >= 10 ? ppl.toFixed(0) : ppl.toFixed(1);
+    var eff = Math.min(100, Math.round(ppl));
+    for (var d = 0; d < 100; d++) dots[d].style.visibility = d < eff ? "visible" : "hidden";
+    pplCap.textContent = "The model is as uncertain as choosing among ~" +
+      Math.round(ppl) + " equally likely words at every step." +
+      (ppl <= 3 ? " Nearly sure of itself." : ppl >= 90 ? " Basically guessing blind." : "");
+
+    var pmax = Math.max.apply(null, p);
+    p.forEach(function (v, i) {
+      cols[i].className = "tok-col" + (i === selected ? " sel" : "");
+      cols[i].querySelector(".tok-bar").style.height = (v / pmax * 110) + "px";
+      cols[i].title = "p(“" + words[i] + "” | context) = " + (v * 100).toFixed(1) + "%";
+      labels[i].textContent = i === selected ? (v * 100).toFixed(0) + "%" : "";
+      bottom[i].className = i === selected ? "sel" : "";
+    });
+
+    readout.textContent = selected < 0
+      ? "Click a token to see its probability and surprisal."
+      : "p(“" + words[selected] + "” | context) = " + (p[selected] * 100).toFixed(1) +
+        "%   →   surprisal = " + (nll[selected] / Math.LN2).toFixed(2) +
+        " bits. Rare tokens cost more; perplexity averages these costs.";
+  }
+
+  skillEl.addEventListener("input", render);
+  render();
+})();
+</script>
+</body>
+</html>
