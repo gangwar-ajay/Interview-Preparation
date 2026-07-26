@@ -282,6 +282,18 @@ pre.py-out {
   white-space: pre-wrap;
   border-left: 3px solid var(--accent);
 }
+.pg-open { font-size: 0.82rem; color: var(--accent); text-decoration: none; }
+.pg-open:hover { text-decoration: underline; }
+.py-plots img { max-width: 100%; border: 1px solid var(--hairline); border-radius: 8px; margin-top: 8px; background: #fff; }
+.colab-link {
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--series-2);
+  color: var(--series-2);
+  text-decoration: none;
+}
+.colab-link:hover { background: var(--series-2); color: #fff; }
 
 /* ---------- interactive viz shared chrome ---------- */
 .viz {
