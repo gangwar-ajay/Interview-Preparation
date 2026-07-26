@@ -4,50 +4,113 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Python Playground — InterviewPrep</title>
-<meta name="description" content="Run Python, NumPy, and pandas directly in your browser — no installation, powered by Pyodide (WebAssembly).">
+<meta name="description" content="Run Python, NumPy, pandas, and matplotlib directly in your browser — no installation, powered by Pyodide (WebAssembly).">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
 <script src="assets/site.js"></script>
 <script src="assets/pyrunner.js"></script>
 <style>
-  #editor {
-    width: 100%;
-    min-height: 300px;
-    resize: vertical;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 0.88rem;
-    line-height: 1.55;
-    color: var(--text-primary);
-    background: var(--code-bg);
-    border: 1px solid var(--hairline);
-    border-radius: 10px;
-    padding: 14px 18px;
-    tab-size: 4;
+  .hero { margin-bottom: 20px; }
+
+  .pg-toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-bottom: 14px;
   }
-  #editor:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .pg-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-  .pg-controls button {
+  .pg-toolbar button {
     font: inherit; font-size: 0.9rem;
     padding: 8px 18px; border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--surface); color: var(--text-primary);
     cursor: pointer;
   }
-  .pg-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  .pg-controls button:disabled { opacity: 0.6; cursor: default; }
-  .pg-status { font-size: 0.85rem; color: var(--muted); }
-  #pg-out {
-    background: var(--code-bg);
-    border: 1px solid var(--hairline);
-    border-radius: 10px;
-    padding: 14px 18px;
-    min-height: 70px;
-    font-size: 0.85rem;
-    line-height: 1.55;
-    white-space: pre-wrap;
-    overflow-x: auto;
-    margin: 0;
+  .pg-toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .pg-toolbar button:disabled { opacity: 0.6; cursor: default; }
+  .pg-status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+  .pg-status .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .pg-status.busy .dot { background: var(--accent); animation: pg-pulse 1s infinite; }
+  .pg-status.ok .dot { background: var(--good); }
+  .pg-status.err .dot { background: #d03b3b; }
+  @keyframes pg-pulse { 50% { opacity: 0.35; } }
+
+  .pg-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
+  .pg-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  @media (max-width: 760px) { .pg-grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    display: flex; flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 0;
   }
+  .panel-h {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
+    color: var(--text-secondary);
+  }
+  .panel-h .hint { font-weight: 400; letter-spacing: 0; color: var(--muted); text-transform: none; }
+  .panel-h button {
+    font: inherit; font-size: 0.75rem; padding: 2px 10px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+  }
+  .panel-h button:hover { color: var(--text-primary); }
+
+  /* Code panel — CodeMirror (falls back to the plain textarea if the CDN fails) */
+  .panel-code { min-height: 460px; }
+  .panel-code .CodeMirror {
+    flex: 1; height: auto; min-height: 420px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88rem; line-height: 1.55;
+    background: var(--code-bg); color: var(--text-primary);
+  }
+  .panel-code .CodeMirror-gutters { background: var(--code-bg); border-right: 1px solid var(--hairline); }
+  .panel-code .CodeMirror-linenumber { color: var(--muted); }
+  .panel-code .CodeMirror-cursor { border-left: 2px solid var(--text-primary); }
+  .panel-code .CodeMirror-selected { background: rgba(42, 120, 214, 0.18); }
+  .panel-code .cm-keyword  { color: #9d43c8; }
+  .panel-code .cm-string   { color: var(--good); }
+  .panel-code .cm-comment  { color: var(--muted); font-style: italic; }
+  .panel-code .cm-number   { color: var(--series-2); }
+  .panel-code .cm-def      { color: var(--accent); }
+  .panel-code .cm-builtin  { color: var(--accent-strong); }
+  .panel-code .cm-operator { color: var(--text-secondary); }
+  #editor {
+    flex: 1; min-height: 420px; width: 100%;
+    border: 0; resize: none; padding: 12px 14px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88rem; line-height: 1.55;
+    color: var(--text-primary); background: var(--code-bg);
+    tab-size: 4;
+  }
+  #editor:focus { outline: none; }
+
+  /* Input panel */
+  #stdin {
+    height: 96px; width: 100%; border: 0; resize: vertical;
+    padding: 10px 14px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem; color: var(--text-primary); background: transparent;
+  }
+  #stdin:focus { outline: none; }
+
+  /* Output panel */
+  .panel-output { flex: 1; min-height: 220px; }
+  #pg-out {
+    flex: 1; margin: 0; padding: 12px 14px;
+    border: 0; border-radius: 0; background: transparent;
+    font-size: 0.85rem; line-height: 1.55;
+    white-space: pre-wrap; overflow: auto; min-height: 120px;
+  }
+  #pg-plots { padding: 0 14px 12px; }
+  #pg-plots img { max-width: 100%; border: 1px solid var(--hairline); border-radius: 8px; margin-top: 8px; background: #fff; }
+
   .pg-note { font-size: 0.85rem; color: var(--text-secondary); margin-top: 20px; }
 </style>
 </head>
@@ -63,41 +126,69 @@
 
   <div class="hero">
     <h1>🐍 Python Playground</h1>
-    <p>Run Python right here in your browser — no installation, nothing leaves
-    your machine. <strong>NumPy, pandas, SciPy, scikit-learn, SymPy</strong> are
-    auto-installed the moment your code imports them.</p>
+    <p>Run Python right in your browser — nothing to install, nothing leaves
+    your machine. <strong>NumPy, pandas, SciPy, matplotlib</strong> and more are
+    auto-installed the moment your code imports them, and plots render below
+    the output.</p>
   </div>
 
-  <textarea id="editor" spellcheck="false" aria-label="Python code editor"># Try me — edit anything and press Run (or Ctrl+Enter)
+  <div class="pg-toolbar">
+    <button id="pg-run" type="button" class="primary">▶ Run</button>
+    <button id="pg-share" type="button" title="Copy a link that opens this playground with your code pre-loaded">🔗 Share</button>
+    <button id="pg-reset" type="button" title="Restore the starter example">Reset example</button>
+    <span class="pg-status" id="pg-status-wrap"><span class="dot"></span><span id="pg-status">Ready — Python loads on first run (~12 MB, then cached).</span></span>
+  </div>
+
+  <div class="pg-grid">
+    <section class="panel panel-code" aria-label="Code editor">
+      <div class="panel-h">CODE <span class="hint">Ctrl+Enter to run · autosaved</span></div>
+      <textarea id="editor" spellcheck="false" aria-label="Python code"># Try me — edit anything, then press Ctrl+Enter (or ▶ Run)
 import numpy as np
-import pandas as pd
+import matplotlib.pyplot as plt
 
-# Softmax over random logits
-x = np.random.randn(5) * 2
-p = np.exp(x - x.max())
-p /= p.sum()
+# Softmax at different temperatures
+x = np.array([2.0, 1.0, 0.5, 3.0, 1.5])
+for T in [0.5, 1.0, 2.0]:
+    p = np.exp(x / T)
+    p /= p.sum()
+    plt.plot(p, "o-", label=f"T = {T}")
 
-df = pd.DataFrame({"logit": x.round(3), "softmax": p.round(3)})
-print(df)
-print("\nsum of probabilities =", p.sum())
+plt.title("Softmax sharpens as temperature drops")
+plt.xlabel("class"); plt.ylabel("probability")
+plt.legend()
+plt.show()          # figures appear under Output
+
+try:
+    name = input("Your name: ")   # input() reads from the INPUT panel →
+except EOFError:
+    name = "friend"
+print(f"Happy plotting, {name}!")
 </textarea>
+    </section>
 
-  <div class="pg-controls">
-    <button id="pg-run" type="button" class="primary">▶ Run (Ctrl+Enter)</button>
-    <button id="pg-clear" type="button">Clear output</button>
-    <span class="pg-status" id="pg-status">Python loads on first run (~12 MB, then cached).</span>
+    <div class="pg-right">
+      <section class="panel" aria-label="Standard input">
+        <div class="panel-h">INPUT · stdin <span class="hint">one line per input() call</span></div>
+        <textarea id="stdin" spellcheck="false" aria-label="Standard input" placeholder="Lines here are fed to input(), one per call."></textarea>
+      </section>
+
+      <section class="panel panel-output" aria-label="Output">
+        <div class="panel-h">OUTPUT <button id="pg-clear" type="button">Clear</button></div>
+        <pre id="pg-out">Output will appear here.</pre>
+        <div id="pg-plots"></div>
+      </section>
+    </div>
   </div>
-
-  <pre id="pg-out">Output will appear here.</pre>
 
   <p class="pg-note"><strong>What works:</strong> Python 3.12 with the
   scientific stack — anything imported is fetched automatically (numpy, pandas,
-  scipy, scikit-learn, sympy, networkx, and other
+  scipy, scikit-learn, sympy, matplotlib, and other
   <a href="https://pyodide.org/en/stable/usage/packages-in-pyodide.html">Pyodide-packaged
-  libraries</a>). Use <code>print()</code> to see results.
-  <strong>What doesn't:</strong> PyTorch and TensorFlow (no WebAssembly builds
-  exist) — copy those snippets to a local machine or Colab. Plots don't display
-  here either; print numbers instead. Powered by
+  libraries</a>). <code>input()</code> reads from the INPUT panel;
+  matplotlib figures render under OUTPUT; 🔗 Share copies a link with your code
+  embedded. <strong>What doesn't:</strong> PyTorch and TensorFlow (no
+  WebAssembly builds exist) — those live in the
+  <a href="notebooks.html">Colab notebooks</a> instead. Powered by
   <a href="https://pyodide.org">Pyodide</a>, CPython compiled to WebAssembly.</p>
 
   <footer class="site">
@@ -107,37 +198,119 @@ print("\nsum of probabilities =", p.sum())
 
 <script>
 (function () {
-  var editor = document.getElementById("editor");
+  var ta = document.getElementById("editor");
+  var stdinEl = document.getElementById("stdin");
   var runBtn = document.getElementById("pg-run");
   var out = document.getElementById("pg-out");
+  var plots = document.getElementById("pg-plots");
   var statusEl = document.getElementById("pg-status");
+  var statusWrap = document.getElementById("pg-status-wrap");
+  var DEFAULT_CODE = ta.value;
+
+  /* CodeMirror editor (graceful fallback to the textarea if the CDN failed) */
+  var cm = null;
+  if (typeof CodeMirror !== "undefined") {
+    cm = CodeMirror.fromTextArea(ta, {
+      mode: "python",
+      lineNumbers: true,
+      indentUnit: 4,
+      indentWithTabs: false,
+      viewportMargin: Infinity,
+      extraKeys: {
+        "Ctrl-Enter": run, "Cmd-Enter": run,
+        "Tab": function (c) { c.somethingSelected() ? c.indentSelection("add") : c.replaceSelection("    "); }
+      }
+    });
+  }
+  function getCode() { return cm ? cm.getValue() : ta.value; }
+  function setCode(v) { cm ? cm.setValue(v) : (ta.value = v); }
+
+  /* Load order: shared link in URL hash > autosave > default example */
+  var params = new URLSearchParams(location.hash.slice(1));
+  try {
+    if (params.get("code")) {
+      setCode(PyRunner.decodeShare(params.get("code")));
+      if (params.get("in")) stdinEl.value = PyRunner.decodeShare(params.get("in"));
+    } else if (localStorage.getItem("pg-code")) {
+      setCode(localStorage.getItem("pg-code"));
+      stdinEl.value = localStorage.getItem("pg-stdin") || "";
+    }
+  } catch (e) { /* corrupted hash or storage — keep the default */ }
+
+  function autosave() {
+    try {
+      localStorage.setItem("pg-code", getCode());
+      localStorage.setItem("pg-stdin", stdinEl.value);
+    } catch (e) {}
+  }
+  if (cm) cm.on("change", autosave); else ta.addEventListener("input", autosave);
+  stdinEl.addEventListener("input", autosave);
+
+  function setStatus(text, state) {
+    statusEl.textContent = text;
+    statusWrap.className = "pg-status" + (state ? " " + state : "");
+  }
 
   async function run() {
     runBtn.disabled = true;
     out.textContent = "";
+    plots.innerHTML = "";
     var lines = [];
     function print(t) { lines.push(t); out.textContent = lines.join("\n"); }
+    var t0 = performance.now();
     try {
-      await PyRunner.execute(editor.value, print, function (st) { statusEl.textContent = st; });
-      if (!lines.length) print("(no output — use print() to see results)");
-      statusEl.textContent = "Done.";
+      var images = await PyRunner.execute(getCode(), print,
+        function (st) { setStatus(st, "busy"); },
+        { stdin: stdinEl.value });
+      images.forEach(function (b64) {
+        var img = document.createElement("img");
+        img.src = "data:image/png;base64," + b64;
+        img.alt = "matplotlib figure";
+        plots.appendChild(img);
+      });
+      if (!lines.length && !images.length) print("(no output — use print() to see results)");
+      setStatus("Done in " + ((performance.now() - t0) / 1000).toFixed(1) + " s", "ok");
     } catch (e) {
       print(String((e && e.message) || e));
-      statusEl.textContent = "Error — see output.";
+      setStatus("Error — see output.", "err");
     }
     runBtn.disabled = false;
   }
 
   runBtn.addEventListener("click", run);
+
   document.getElementById("pg-clear").addEventListener("click", function () {
     out.textContent = "Output will appear here.";
+    plots.innerHTML = "";
   });
-  editor.addEventListener("keydown", function (e) {
+
+  document.getElementById("pg-share").addEventListener("click", function () {
+    var hash = "#code=" + PyRunner.encodeShare(getCode()) +
+      (stdinEl.value ? "&in=" + PyRunner.encodeShare(stdinEl.value) : "");
+    history.replaceState(null, "", hash);
+    var url = location.href;
+    function done() { setStatus("Link copied to clipboard — paste it anywhere.", "ok"); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, function () { prompt("Copy this link:", url); });
+    } else {
+      prompt("Copy this link:", url);
+    }
+  });
+
+  document.getElementById("pg-reset").addEventListener("click", function () {
+    setCode(DEFAULT_CODE);
+    stdinEl.value = "";
+    try { localStorage.removeItem("pg-code"); localStorage.removeItem("pg-stdin"); } catch (e) {}
+    history.replaceState(null, "", location.pathname);
+    setStatus("Starter example restored.", "");
+  });
+
+  ta.addEventListener("keydown", function (e) {   // fallback path only
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
     if (e.key === "Tab") {
       e.preventDefault();
-      var s = editor.selectionStart;
-      editor.setRangeText("    ", s, editor.selectionEnd, "end");
+      var s = ta.selectionStart;
+      ta.setRangeText("    ", s, ta.selectionEnd, "end");
     }
   });
 })();
