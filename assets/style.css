@@ -177,6 +177,8 @@ ul.qlist .qmeta { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
   font-size: 0.92rem;
 }
 .howto strong { color: var(--text-primary); }
+.howto a { color: var(--accent); text-decoration: none; }
+.howto a:hover { text-decoration: underline; }
 
 /* ---------- question page ---------- */
 nav.crumb { font-size: 0.88rem; margin-bottom: 16px; }

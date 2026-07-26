@@ -4,6 +4,20 @@
 
 var QUESTIONS = [
   {
+    title: "What is online softmax, and how is it different from normal softmax?",
+    topic: "Deep Learning",
+    tags: ["softmax", "FlashAttention", "numerical stability", "GPU kernels"],
+    file: "online-softmax.html",
+    added: "2026-07-26"
+  },
+  {
+    title: "What is perplexity in LLMs?",
+    topic: "LLMs",
+    tags: ["perplexity", "evaluation", "language modeling", "cross-entropy"],
+    file: "perplexity.html",
+    added: "2026-07-26"
+  },
+  {
     title: "What is the attention mechanism in Transformers?",
     topic: "Deep Learning",
     tags: ["transformers", "attention", "LLMs", "NLP"],
