@@ -4,6 +4,13 @@
 
 var QUESTIONS = [
   {
+    title: "What is MMLU, and how does log-probability scoring work?",
+    topic: "LLMs",
+    tags: ["MMLU", "benchmarks", "evaluation", "log-probability"],
+    file: "mmlu-logprob.html",
+    added: "2026-07-26"
+  },
+  {
     title: "What is online softmax, and how is it different from normal softmax?",
     topic: "Deep Learning",
     tags: ["softmax", "FlashAttention", "numerical stability", "GPU kernels"],
