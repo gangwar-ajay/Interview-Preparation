@@ -4,6 +4,13 @@
 
 var QUESTIONS = [
   {
+    title: "What is the Elo Rating System, and how is it used to compare LLMs?",
+    topic: "LLMs",
+    tags: ["Elo", "Chatbot Arena", "evaluation", "pairwise comparison"],
+    file: "elo-rating.html",
+    added: "2026-07-26"
+  },
+  {
     title: "What is MMLU, and how does log-probability scoring work?",
     topic: "LLMs",
     tags: ["MMLU", "benchmarks", "evaluation", "log-probability"],
