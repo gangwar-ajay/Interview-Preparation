@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is the Elo Rating System for model comparison? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<style>
+  .arena-row {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 14px; align-items: center; margin-bottom: 16px;
+  }
+  .fighter {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; text-align: center;
+  }
+  .fighter h4 { margin: 0 0 4px; font-size: 0.95rem; }
+  .fighter .rating { font-size: 1.9rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .fighter .prob { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .fighter .delta { font-size: 0.82rem; font-weight: 600; margin-top: 6px; min-height: 1.2em; }
+  .fighter .delta.up { color: var(--good); }
+  .fighter .delta.down { color: #d03b3b; }
+  .vs { font-weight: 700; color: var(--muted); font-size: 0.9rem; }
+  .win-bar { position: relative; height: 26px; border-radius: 8px; overflow: hidden; background: var(--hairline); margin-bottom: 16px; }
+  .win-bar .seg-a { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+  .win-bar .seg-b { position: absolute; inset: 0 0 0 auto; background: var(--series-2); }
+  .win-bar .lbl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 0.78rem; color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .vote-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .vote-row button {
+    font: inherit; font-size: 0.85rem; padding: 8px 16px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-primary); cursor: pointer;
+  }
+  .vote-row button.primary { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .history { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; color: var(--muted); min-height: 1.4em; }
+  .history span { border: 1px solid var(--hairline); border-radius: 6px; padding: 2px 8px; }
+  @media (max-width: 560px) { .arena-row { grid-template-columns: 1fr; } .vs { text-align: center; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <div class="site-nav">
+      <a class="nav-link" href="../playground.html">🐍 Playground</a>
+      <a class="nav-link" href="../notebooks.html">📓 Colab</a>
+      <button id="theme-toggle" type="button">☾ Dark</button>
+    </div>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is the Elo Rating System, and how is it used to compare LLMs?</h1>
+    <p class="q-topic">LLMs · evaluation · Chatbot Arena · pairwise comparison</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p>The <strong>Elo rating system</strong> is a method for ranking
+      competitors from a stream of <strong>pairwise, win/loss/draw</strong>
+      outcomes — invented by Arpad Elo for chess. Every competitor starts with
+      a rating (often 1000 or 1500). Before each match, the rating difference
+      predicts a <strong>win probability</strong> via a logistic curve. After the
+      match, both ratings move by an amount proportional to the
+      <strong>surprise</strong>: beating a much stronger opponent gains you a
+      lot; beating a much weaker one barely moves the needle. Ratings
+      self-correct over many matches into a single number that predicts future
+      head-to-head outcomes.</p>
+      <p>For LLMs, this is exactly how <strong>Chatbot Arena</strong>
+      (LMSYS/LMArena) ranks models: real users send a prompt, get anonymous
+      side-by-side responses from two random models, and vote for the better
+      one — no rubric, no benchmark questions, just human preference. Each vote
+      is one Elo "match." With enough votes across enough model pairs, Elo
+      converges to a single leaderboard number per model, mirroring how chess
+      federations rank millions of players from disconnected local games.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>Think of a <strong>ladder tournament</strong> at a chess club that
+      never plays a full round-robin — players just challenge whoever's around.
+      If the club's #1 player beats a beginner, almost nothing changes: everyone
+      already expected that. But if the beginner pulls off an upset, they jump
+      several rungs at once, because that result was <em>informative</em> — it
+      revealed the beginner is stronger than the ladder thought. Elo is the
+      bookkeeping that makes this rigorous: your rating moves by
+      <code>K × (what actually happened − what was expected)</code>. Chatbot
+      Arena is the same ladder, except the "matches" are anonymous users
+      picking their favorite of two chatbot replies, thousands of times a day,
+      across models that never play a clean one-on-one round-robin either.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Two models with different starting ratings "battle." Cast votes and
+      watch ratings update live — notice how the underdog gains a lot from a
+      single win, while the favorite barely loses anything for a loss it "was
+      supposed to" have. Try raising <strong>K</strong> to see votes swing
+      ratings harder.</p>
+      <div class="viz">
+        <p class="viz-hint">Win probability comes from the current rating gap. Each vote updates both ratings by K × (actual − expected).</p>
+        <div class="controls">
+          <label>K-factor
+            <input type="range" id="kfac" min="4" max="64" step="4" value="32">
+            <output id="kfac-out">32</output>
+          </label>
+        </div>
+        <div class="win-bar" id="winbar"><div class="seg-a"></div><div class="seg-b"></div><div class="lbl"><span id="pa-lbl"></span><span id="pb-lbl"></span></div></div>
+        <div class="arena-row">
+          <div class="fighter">
+            <h4 id="name-a">Model Alpha</h4>
+            <div class="rating" id="rating-a">1200</div>
+            <div class="prob" id="prob-a"></div>
+            <div class="delta" id="delta-a"></div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="fighter">
+            <h4 id="name-b">Model Beta</h4>
+            <div class="rating" id="rating-b">1000</div>
+            <div class="prob" id="prob-b"></div>
+            <div class="delta" id="delta-b"></div>
+          </div>
+        </div>
+        <div class="vote-row">
+          <button id="vote-a" type="button" class="primary">Vote: Alpha wins</button>
+          <button id="vote-tie" type="button">Vote: Tie</button>
+          <button id="vote-b" type="button" class="primary">Vote: Beta wins</button>
+          <button id="vote-reset" type="button">Reset</button>
+        </div>
+        <div class="history" id="history"></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">1960</div><div class="t-what">Physicist Arpad Elo designs the system to replace the US Chess Federation's ad-hoc ranking method with one grounded in a logistic performance model.</div></div>
+        <div class="t-row"><div class="t-when">1970</div><div class="t-what">FIDE (the World Chess Federation) adopts Elo as the official international rating system — it becomes the template copied by nearly every competitive-ranking domain since.</div></div>
+        <div class="t-row"><div class="t-when">2010s</div><div class="t-what">Glicko, Glicko-2, and TrueSkill (Microsoft, for Xbox Live matchmaking) extend Elo with rating <em>uncertainty</em> and multiplayer support — precursors to the statistically richer methods used today.</div></div>
+        <div class="t-row"><div class="t-when">2023</div><div class="t-what">UC Berkeley's LMSYS launches <strong>Chatbot Arena</strong>: anonymous, randomized side-by-side LLM battles judged by real users, ranked with Elo (later Bradley-Terry, a closely related maximum-likelihood model) — it becomes the de facto "human preference" leaderboard for LLMs, cited by nearly every major lab.</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">Arena-style leaderboards report <strong>Bradley-Terry ratings with bootstrapped confidence intervals</strong> rather than raw sequential Elo, precisely because match order shouldn't matter for a leaderboard (see the math below); category-specific boards (coding, math, hard prompts, multi-turn) have appeared alongside the overall ranking; "style control" adjustments try to separate genuine quality from response length/formatting bias.</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">More robust preference aggregation (removing voter and prompt-selection bias), automated LLM-judge battles to scale beyond human raters, and tighter integration between arena-style human preference and benchmark accuracy as complementary — not competing — signals.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Model A is rated 1200, Model B is rated 1000, K = 32.</p>
+      <ul>
+        <li>Expected score for A: E<sub>A</sub> = 1 / (1 + 10<sup>(1000−1200)/400</sup>) = 1 / (1 + 10<sup>−0.5</sup>) ≈ <strong>0.76</strong> (A is favored to win about 76% of the time).</li>
+        <li><strong>Upset — B wins:</strong> A's actual score S<sub>A</sub> = 0. New rating: 1200 + 32×(0 − 0.76) = 1200 − 24.3 = <strong>1175.7</strong>. B correspondingly rises to <strong>1024.3</strong>. One upset moves both ratings by ~24 points.</li>
+        <li><strong>As expected — A wins:</strong> S<sub>A</sub> = 1. New rating: 1200 + 32×(1 − 0.76) = 1200 + 7.7 = <strong>1207.7</strong>. Barely moves — the outcome carried little new information.</li>
+      </ul>
+      <p>The asymmetry is the entire point: Elo updates are largest exactly when
+      the result was least expected, which is when it's most informative about
+      the true ranking.</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Use cases</h2>
+      <ul>
+        <li><strong>Chatbot Arena / LMArena:</strong> the primary human-preference leaderboard for LLMs, driving real adoption decisions and press coverage of new model releases.</li>
+        <li><strong>RLHF reward-model evaluation:</strong> comparing two candidate policies via pairwise human preference, the same math used to train the reward models behind RLHF.</li>
+        <li><strong>A/B testing prompts or system messages:</strong> treating two prompt variants as "players" and letting real usage or an LLM judge vote determines which wins.</li>
+        <li><strong>Recommender &amp; ranking systems:</strong> ranking items (not just models) from pairwise click/preference signals.</li>
+        <li><strong>Its home turf:</strong> chess, Go, esports (many games use Elo or Elo-derived systems like Glicko-2 and TrueSkill for matchmaking).</li>
+        <li><strong>Red-teaming &amp; jailbreak comparison:</strong> ranking attack/defense prompt variants by how often they "win" against a target model.</li>
+      </ul>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <p>Expected score of player A against player B, from the rating gap:</p>
+      <div class="formula">
+        E<sub>A</sub> = 1 / (1 + 10<sup>(R<sub>B</sub> − R<sub>A</sub>)/400</sup>)
+      </div>
+      <p>Update after the match, where S<sub>A</sub> ∈ {1, 0.5, 0} for win/draw/loss
+      and K controls how much a single match can move the rating:</p>
+      <div class="formula">
+        R<sub>A</sub>′ = R<sub>A</sub> + K · (S<sub>A</sub> − E<sub>A</sub>)
+      </div>
+      <p>Note E<sub>A</sub> + E<sub>B</sub> = 1 and the rating change is always
+      equal and opposite (R<sub>A</sub> gains exactly what R<sub>B</sub> loses) —
+      Elo is a zero-sum redistribution of rating points. The 400 is a scaling
+      constant chosen so "+400 rating" corresponds to a 10:1 expected odds; it's
+      arbitrary but fixed by convention. Modern LLM arenas actually fit a
+      <strong>Bradley-Terry model</strong> — the same win-probability formula in
+      base <em>e</em> instead of sequential updates — via maximum likelihood over
+      <em>all</em> recorded battles at once, because plain sequential Elo is
+      order-dependent (processing the same matches in a different order gives
+      slightly different final ratings) while Bradley-Terry gives one
+      order-independent answer plus proper confidence intervals.</p>
+<pre><code>import numpy as np
+
+def expected_score(r_a, r_b):
+    return 1 / (1 + 10 ** ((r_b - r_a) / 400))
+
+def update_elo(r_a, r_b, score_a, k=32):
+    """score_a: 1 = A won, 0.5 = draw, 0 = A lost."""
+    e_a = expected_score(r_a, r_b)
+    r_a_new = r_a + k * (score_a - e_a)
+    r_b_new = r_b + k * ((1 - score_a) - (1 - e_a))   # zero-sum: exact mirror
+    return r_a_new, r_b_new
+
+# The worked example above
+r_a, r_b = 1200, 1000
+print("E_A =", round(expected_score(r_a, r_b), 3))         # 0.76
+print("upset (B wins):", update_elo(r_a, r_b, score_a=0))   # (1175.7, 1024.3)
+print("as expected (A wins):", update_elo(r_a, r_b, score_a=1))  # (1207.7, 992.3)
+
+# Simulate a mini "Chatbot Arena": 5 models, random pairings, sequential Elo
+rng = np.random.default_rng(0)
+true_strength = {"A": 1300, "B": 1200, "C": 1100, "D": 1000, "E": 900}
+ratings = {m: 1000.0 for m in true_strength}   # everyone starts equal
+
+for _ in range(2000):
+    m1, m2 = rng.choice(list(true_strength), size=2, replace=False)
+    # "true" win probability comes from hidden strength; the vote is a coin flip on it
+    p1 = expected_score(true_strength[m1], true_strength[m2])
+    score1 = 1.0 if rng.random() < p1 else 0.0
+    ratings[m1], ratings[m2] = update_elo(ratings[m1], ratings[m2], score1, k=16)
+
+for m in sorted(ratings, key=ratings.get, reverse=True):
+    print(f"{m}: {ratings[m]:7.1f}   (true strength rank order preserved: "
+          f"{sorted(true_strength, key=true_strength.get, reverse=True)})")
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var state = { a: 1200, b: 1000, log: [] };
+  var kEl = document.getElementById("kfac"), kOut = document.getElementById("kfac-out");
+
+  function expected(ra, rb) { return 1 / (1 + Math.pow(10, (rb - ra) / 400)); }
+
+  function render() {
+    var ea = expected(state.a, state.b), eb = 1 - ea;
+    document.getElementById("rating-a").textContent = Math.round(state.a);
+    document.getElementById("rating-b").textContent = Math.round(state.b);
+    document.getElementById("prob-a").textContent = "P(win) = " + (ea * 100).toFixed(1) + "%";
+    document.getElementById("prob-b").textContent = "P(win) = " + (eb * 100).toFixed(1) + "%";
+    document.querySelector(".seg-a").style.width = (ea * 100) + "%";
+    document.querySelector(".seg-b").style.width = (eb * 100) + "%";
+    document.getElementById("pa-lbl").textContent = (ea * 100).toFixed(0) + "%";
+    document.getElementById("pb-lbl").textContent = (eb * 100).toFixed(0) + "%";
+    document.getElementById("history").innerHTML = state.log.slice(-10).map(function (h) {
+      return "<span>" + h + "</span>";
+    }).join("");
+  }
+
+  function vote(scoreA) {
+    var k = parseFloat(kEl.value);
+    var ea = expected(state.a, state.b);
+    var da = k * (scoreA - ea);
+    var db = -da;
+    state.a += da; state.b += db;
+    var da_el = document.getElementById("delta-a"), db_el = document.getElementById("delta-b");
+    da_el.textContent = (da >= 0 ? "+" : "") + da.toFixed(1);
+    da_el.className = "delta " + (da >= 0 ? "up" : "down");
+    db_el.textContent = (db >= 0 ? "+" : "") + db.toFixed(1);
+    db_el.className = "delta " + (db >= 0 ? "up" : "down");
+    state.log.push(scoreA === 1 ? "Alpha won (" + (da >= 0 ? "+" : "") + da.toFixed(0) + ")"
+      : scoreA === 0 ? "Beta won (" + (db >= 0 ? "+" : "") + db.toFixed(0) + ")"
+      : "Tie");
+    render();
+  }
+
+  document.getElementById("vote-a").addEventListener("click", function () { vote(1); });
+  document.getElementById("vote-b").addEventListener("click", function () { vote(0); });
+  document.getElementById("vote-tie").addEventListener("click", function () { vote(0.5); });
+  document.getElementById("vote-reset").addEventListener("click", function () {
+    state = { a: 1200, b: 1000, log: [] };
+    document.getElementById("delta-a").textContent = "";
+    document.getElementById("delta-b").textContent = "";
+    render();
+  });
+  kEl.addEventListener("input", function () { kOut.textContent = kEl.value; });
+
+  render();
+})();
+</script>
+</body>
+</html>
