@@ -147,6 +147,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   var SECTION_LABELS = {
+    explainer: "▶ Watch",
     definition: "Definition", analogy: "Analogy", visualization: "Visualization",
     history: "History", example: "Example", usecase: "Use cases", math: "Math & Code"
   };
