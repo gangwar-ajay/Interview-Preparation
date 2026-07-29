@@ -31,6 +31,19 @@
     this.timer = null;
     this.chunks = [];
     this.chunkIndex = 0;
+    this._k = 0;          // sentence index within the current scene
+    this._elapsed = 0;    // ms already played in this scene (silent mode)
+    this._softPaused = false;
+
+    // Playback preferences, remembered across visits.
+    // 0.9 default: browser-default 1.0 reads noticeably fast for explanation.
+    this.rate = 0.9;
+    this._voiceName = null;
+    try {
+      var savedRate = parseFloat(localStorage.getItem("ex-rate"));
+      if (savedRate >= 0.5 && savedRate <= 2) this.rate = savedRate;
+      this._voiceName = localStorage.getItem("ex-voice") || null;
+    } catch (e) {}
 
     this.scenes.forEach(function (s, i) {
       s.dataset.index = i;
@@ -141,6 +154,7 @@
       self.muted = !self.muted;
       self.muteBtn.textContent = self.muted ? "🔇 Sound off" : "🔊 Sound on";
       if (self.muted) self.cancelSpeech();
+      self._softPaused = false;
       if (self.playing) { self.stopTimer(); self.runScene(); }   // re-time without voice
     });
 
@@ -160,6 +174,52 @@
     bar.appendChild(next);
     bar.appendChild(this.muteBtn);
 
+    // Speed + voice pickers (persisted, so a visitor sets them once)
+    var opts = document.createElement("div");
+    opts.className = "ex-opts";
+
+    var speedLabel = document.createElement("label");
+    speedLabel.textContent = "Speed ";
+    this.speedSel = document.createElement("select");
+    [["0.7", "0.7× slowest"], ["0.8", "0.8× slower"], ["0.9", "0.9× relaxed"],
+     ["1", "1× normal"], ["1.15", "1.15× brisk"], ["1.3", "1.3× fast"]]
+      .forEach(function (o) {
+        var el = document.createElement("option");
+        el.value = o[0]; el.textContent = o[1];
+        if (parseFloat(o[0]) === self.rate) el.selected = true;
+        self.speedSel.appendChild(el);
+      });
+    this.speedSel.addEventListener("change", function () {
+      self.rate = parseFloat(self.speedSel.value);
+      try { localStorage.setItem("ex-rate", self.speedSel.value); } catch (e) {}
+      if (self.playing) { self.stopTimer(); self.cancelSpeech(); self._softPaused = false; self.runScene(); }
+    });
+    speedLabel.appendChild(this.speedSel);
+
+    var voiceLabel = document.createElement("label");
+    voiceLabel.textContent = "Voice ";
+    this.voiceSel = document.createElement("select");
+    this.voiceSel.hidden = true;
+    this.voiceSel.addEventListener("change", function () {
+      self._voiceName = self.voiceSel.value;
+      try { localStorage.setItem("ex-voice", self._voiceName); } catch (e) {}
+      if (self.playing) { self.stopTimer(); self.cancelSpeech(); self._softPaused = false; self.runScene(); }
+    });
+    voiceLabel.appendChild(this.voiceSel);
+
+    opts.appendChild(speedLabel);
+    opts.appendChild(voiceLabel);
+    this.optsEl = opts;
+
+    this.fillVoicePicker();
+    if (this.speechAvailable()) {
+      try {
+        window.speechSynthesis.addEventListener("voiceschanged", function () {
+          self.fillVoicePicker();
+        });
+      } catch (e) {}
+    }
+
     var note = document.createElement("p");
     note.className = "ex-note";
     this.noteEl = note;
@@ -171,7 +231,8 @@
     this.root.insertBefore(track, stage.nextSibling);
     this.root.insertBefore(caption, track.nextSibling);
     this.root.insertBefore(bar, caption.nextSibling);
-    this.root.insertBefore(chips, bar.nextSibling);
+    this.root.insertBefore(opts, bar.nextSibling);
+    this.root.insertBefore(chips, opts.nextSibling);
     this.root.appendChild(note);
   };
 
@@ -198,6 +259,21 @@
     this.playing = true;
     this.playBtn.textContent = "❚❚ Pause";
     this.root.classList.add("playing");
+
+    /* True mid-sentence resume where the engine supports it. Otherwise we
+       fall through to runScene(), which picks up at this._k — the sentence
+       that was interrupted — rather than restarting the whole scene. */
+    if (this._softPaused) {
+      this._softPaused = false;
+      if (this.speechAvailable()) {
+        try {
+          if (window.speechSynthesis.paused && window.speechSynthesis.speaking) {
+            window.speechSynthesis.resume();
+            return;
+          }
+        } catch (e) {}
+      }
+    }
     this.runScene();
   };
 
@@ -206,6 +282,34 @@
     this.playBtn.textContent = "▶ Resume";
     this.root.classList.remove("playing");
     this.stopTimer();
+
+    // Bank how far into the scene we got, so silent playback resumes correctly.
+    if (this._sceneStart) {
+      this._elapsed += Date.now() - this._sceneStart;
+      this._sceneStart = 0;
+    }
+
+    if (this.speechAvailable() && !this.muted && !this._speechBroken) {
+      try {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();   // keeps position; resume() continues
+          this._softPaused = true;
+          // Some builds no-op pause(). If it didn't take, cancel outright —
+          // resume then restarts the interrupted sentence via this._k.
+          var self2 = this;
+          setTimeout(function () {
+            if (!self2._softPaused) return;
+            try {
+              if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                self2._softPaused = false;
+                window.speechSynthesis.cancel();
+              }
+            } catch (e) {}
+          }, 220);
+          return;
+        }
+      } catch (e) {}
+    }
     this.cancelSpeech();
   };
 
@@ -223,6 +327,8 @@
     var wasPlaying = this.playing;
     this.stopTimer();
     this.cancelSpeech();
+    // Explicit navigation always starts the target scene from the top.
+    this._k = 0; this._elapsed = 0; this._sceneStart = 0; this._softPaused = false;
     if (i < 0 || i >= this.scenes.length) {
       this.playing = false;
       this.playBtn.textContent = "▶ Replay";
@@ -234,10 +340,11 @@
     if (wasPlaying) this.runScene();
   };
 
-  /* Estimate reading time when there's no voice: ~2.6 words/second. */
+  /* Estimate reading time when there's no voice: ~2.6 words/second at 1×. */
   ExplainerPlayer.prototype.estimate = function (text) {
     var words = text.split(/\s+/).filter(Boolean).length;
-    return Math.max(2200, (words / 2.6) * 1000 + 500);
+    var ms = (words / (2.6 * (this.rate || 1))) * 1000 + 500;
+    return Math.max(2200, ms);
   };
 
   ExplainerPlayer.prototype.runScene = function () {
@@ -245,31 +352,36 @@
     var self = this;
     var scene = this.scenes[this.i];
 
-    // Restart CSS animations for this scene
-    scene.classList.remove("active");
-    void scene.offsetWidth;
-    scene.classList.add("active");
+    // Replay the scene's entrance animation only when starting it fresh,
+    // not when resuming mid-scene after a pause.
+    if (!this._elapsed && !this._k) {
+      scene.classList.remove("active");
+      void scene.offsetWidth;
+      scene.classList.add("active");
+    }
 
     var chunks = scene._chunks;
     var useVoice = this.speechAvailable() && !this.muted && !this._speechBroken && chunks.length;
 
     if (!useVoice) {
       var ms = this.estimate(scene.dataset.narration || "");
-      var start = Date.now();
+      this._sceneStart = Date.now();
       var tick = function () {
         if (!self.playing) return;
-        var f = Math.min(1, (Date.now() - start) / ms);
+        var done = self._elapsed + (Date.now() - self._sceneStart);
+        var f = Math.min(1, done / ms);
         self.updateProgress(f);
         if (f < 1) self.timer = setTimeout(tick, 100);
-        else self.advance();
+        else { self._sceneStart = 0; self.advance(); }
       };
       tick();
       return;
     }
 
-    // Speak sentence chunks in sequence (avoids Chrome's long-utterance cutoff)
+    // Speak sentence chunks in sequence (avoids Chrome's long-utterance cutoff).
+    // Starts at this._k so a pause resumes at the interrupted sentence.
     this.cancelSpeech();
-    var k = 0;
+    var k = Math.min(this._k || 0, chunks.length);
     var watchdog = null;
 
     /* Some environments expose speechSynthesis but can't actually speak
@@ -290,14 +402,17 @@
 
     var speakNext = function () {
       if (!self.playing) return;
+      self._k = k;                       // remember position for pause/resume
       if (k >= chunks.length) { self.advance(); return; }
       self.updateProgress(k / chunks.length);
 
       var u = new SpeechSynthesisUtterance(chunks[k]);
-      u.rate = 1.0;
+      u.rate = self.rate;
       u.pitch = 1.0;
       var v = self.pickVoice();
-      if (v) u.voice = v;
+      // Assigning .voice can throw if the list went stale between reads;
+      // the browser default is an acceptable outcome, silence is not.
+      if (v) { try { u.voice = v; } catch (e) {} }
 
       var started = false;
       u.onstart = function () { started = true; self._speechWorks = true; };
@@ -307,7 +422,12 @@
         // Never started and no prior successful speech => synthesis is a no-op here.
         if (!started && !self._speechWorks) { fallback(); return; }
         k++;
-        speakNext();
+        // Beat between sentences — back-to-back utterances run together
+        // otherwise. Scaled by rate so slow playback gets roomier pauses.
+        self.timer = setTimeout(function () {
+          self.timer = null;
+          speakNext();
+        }, Math.round(340 / (self.rate || 1)));
       };
       u.onend = done;
       u.onerror = function () {
@@ -335,22 +455,60 @@
     speakNext();
   };
 
-  ExplainerPlayer.prototype.pickVoice = function () {
-    if (this._voice !== undefined) return this._voice;
+  /* English voices, best-sounding first.
+     Device voices vary enormously in quality; the cheap built-in ones
+     ("compact", "eSpeak", the legacy *Desktop* set) are the robotic ones,
+     while network/"natural"/"enhanced" voices sound far better. Rank rather
+     than trusting the browser default, which is often the worst installed. */
+  ExplainerPlayer.prototype.englishVoices = function () {
     var voices = [];
     try { voices = window.speechSynthesis.getVoices() || []; } catch (e) {}
-    if (!voices.length) return null;   // not loaded yet; browser default is fine
-    var preferred = ["Samantha", "Google US English", "Microsoft Aria", "Microsoft Zira", "Alex", "Daniel"];
-    for (var i = 0; i < preferred.length; i++) {
-      for (var j = 0; j < voices.length; j++) {
-        if (voices[j].name.indexOf(preferred[i]) !== -1) { this._voice = voices[j]; return this._voice; }
+    var en = voices.filter(function (v) { return /^en\b|^en[-_]/i.test(v.lang || ""); });
+    if (!en.length) en = voices.slice();
+
+    function score(v) {
+      var s = 0, name = v.name || "";
+      if (/espeak|compact|desktop/i.test(name)) s -= 60;
+      if (v.localService === false) s += 40;                    // network voices sound best
+      if (/natural|neural|premium|enhanced|siri/i.test(name)) s += 45;
+      if (/google/i.test(name)) s += 30;
+      if (/samantha|ava|allison|aria|jenny|serena|karen|moira|tessa|zira/i.test(name)) s += 22;
+      if (/alex|daniel|guy|david|fred|albert|ralph/i.test(name)) s += 8;
+      if (/^en-US/i.test(v.lang)) s += 6;
+      if (/^en-GB/i.test(v.lang)) s += 4;
+      if (v.default) s += 3;
+      return s;
+    }
+    return en.slice().sort(function (a, b) { return score(b) - score(a); });
+  };
+
+  ExplainerPlayer.prototype.pickVoice = function () {
+    var list = this.englishVoices();
+    if (!list.length) return null;                 // not loaded yet — browser default
+    if (this._voiceName) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].name === this._voiceName) return list[i];
       }
     }
-    for (var m = 0; m < voices.length; m++) {
-      if (/^en[-_]/i.test(voices[m].lang)) { this._voice = voices[m]; return this._voice; }
-    }
-    this._voice = null;
-    return null;
+    return list[0];
+  };
+
+  /* The voice list loads asynchronously in Chrome, so the picker is
+     (re)filled whenever it arrives. */
+  ExplainerPlayer.prototype.fillVoicePicker = function () {
+    if (!this.voiceSel) return;
+    var list = this.englishVoices();
+    if (!list.length) { this.voiceSel.hidden = true; return; }
+    var current = this._voiceName || list[0].name;
+    this.voiceSel.hidden = false;
+    this.voiceSel.innerHTML = "";
+    list.forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v.name;
+      o.textContent = v.name.replace(/\s*\(.*\)$/, "");
+      if (v.name === current) o.selected = true;
+      this.voiceSel.appendChild(o);
+    }, this);
   };
 
   ExplainerPlayer.prototype.advance = function () {
@@ -360,10 +518,19 @@
       this.playBtn.textContent = "▶ Replay";
       this.root.classList.remove("playing");
       this.updateProgress(1);
+      this._k = 0; this._elapsed = 0; this._sceneStart = 0;
       return;
     }
+    var self = this;
+    this._k = 0; this._elapsed = 0; this._sceneStart = 0;
     this.show(this.i + 1);
-    this.runScene();
+    // Longer beat at a scene change: the visual switches, and running the
+    // next narration straight on makes the two scenes blur together.
+    this.stopTimer();
+    this.timer = setTimeout(function () {
+      self.timer = null;
+      self.runScene();
+    }, Math.round(700 / (self.rate || 1)));
   };
 
   document.addEventListener("DOMContentLoaded", function () {
