@@ -4,6 +4,20 @@
 
 var QUESTIONS = [
   {
+    title: "What is the Bradley-Terry model for pairwise rankings?",
+    topic: "Machine Learning",
+    tags: ["Bradley-Terry", "ranking", "RLHF", "maximum likelihood"],
+    file: "bradley-terry.html",
+    added: "2026-07-28"
+  },
+  {
+    title: "What is alignment in LLMs, and what are the different types?",
+    topic: "LLMs",
+    tags: ["alignment", "RLHF", "DPO", "Constitutional AI", "safety"],
+    file: "llm-alignment.html",
+    added: "2026-07-28"
+  },
+  {
     title: "What is the Elo Rating System, and how is it used to compare LLMs?",
     topic: "LLMs",
     tags: ["Elo", "Chatbot Arena", "evaluation", "pairwise comparison"],

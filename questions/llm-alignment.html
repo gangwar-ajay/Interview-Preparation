@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is alignment in LLMs? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<style>
+  .stage-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .stage-row button {
+    font: inherit; font-size: 0.85rem; padding: 7px 15px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-secondary); cursor: pointer;
+  }
+  .stage-row button[aria-pressed="true"] { background: var(--tc, var(--accent)); border-color: var(--tc, var(--accent)); color: #fff; font-weight: 600; }
+  .prompt-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .prompt-row button {
+    font: inherit; font-size: 0.8rem; padding: 5px 12px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-secondary); cursor: pointer;
+  }
+  .prompt-row button[aria-pressed="true"] { border-color: var(--series-2); color: var(--series-2); font-weight: 600; }
+  .chat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .chat .who { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+  .chat .msg { font-size: 0.92rem; color: var(--text-primary); white-space: pre-wrap; }
+  .chat.out { border-left: 3px solid var(--tc, var(--accent)); }
+  .chat.out .msg { color: var(--text-secondary); font-style: italic; }
+  .meters { display: grid; gap: 10px; margin-bottom: 12px; }
+  .meter { display: grid; grid-template-columns: 110px 1fr 44px; gap: 12px; align-items: center; font-size: 0.85rem; }
+  .meter .track { height: 12px; border-radius: 999px; background: var(--hairline); overflow: hidden; }
+  .meter .track i { display: block; height: 100%; border-radius: 999px; transition: width 0.35s ease, background-color 0.35s; }
+  .meter .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  .stage-note { font-size: 0.85rem; color: var(--text-secondary); }
+  .stage-note b { color: var(--text-primary); }
+  .taxo { display: grid; gap: 10px; margin-top: 4px; }
+  .taxo .row {
+    display: grid; grid-template-columns: 190px 1fr; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--tc, var(--accent));
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .taxo .k { font-weight: 700; font-size: 0.88rem; }
+  .taxo .v { color: var(--text-secondary); font-size: 0.9rem; }
+  @media (max-width: 600px) {
+    .taxo .row { grid-template-columns: 1fr; gap: 2px; }
+    .meter { grid-template-columns: 92px 1fr 40px; gap: 8px; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <div class="site-nav">
+      <a class="nav-link" href="../playground.html">🐍 Playground</a>
+      <a class="nav-link" href="../notebooks.html">📓 Colab</a>
+      <button id="theme-toggle" type="button">☾ Dark</button>
+    </div>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is alignment in LLMs, and what are the different types?</h1>
+    <p class="q-topic">LLMs · alignment · RLHF · DPO · safety</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p><strong>Alignment</strong> is the problem of making an AI system
+      actually pursue what its designers and users <em>intend</em>, rather than
+      whatever proxy objective it was literally trained on. A pretrained LLM
+      optimizes exactly one thing — predict the next token in web text — which
+      makes it a fluent <em>imitator</em>, not a helpful <em>assistant</em>. It
+      will happily continue a conversation with more questions instead of
+      answering, imitate confident nonsense, or reproduce harmful content,
+      because all of that is faithful next-token prediction. Alignment is the
+      set of techniques that closes the gap between "predicts plausible text"
+      and "does what you actually wanted, safely and honestly."</p>
+      <p>The usual target is summarized as the <strong>HHH</strong> criteria —
+      <strong>Helpful</strong> (does the task), <strong>Honest</strong> (doesn't
+      fabricate, expresses calibrated uncertainty), and <strong>Harmless</strong>
+      (declines to cause serious harm). These genuinely trade off against each
+      other: a model that refuses everything is perfectly harmless and useless,
+      which is why over-refusal is treated as an alignment failure too, not a
+      safety win.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>Think of hiring a <strong>brilliant new employee who has read the
+      entire internet but has never held a job</strong>. They know an enormous
+      amount, but on day one they don't know your norms: asked "how do I fix
+      this?" they might recite a forum thread, confidently invent a plausible
+      answer, or repeat something they read that would get the company sued.
+      Nothing is wrong with their knowledge — they simply have no idea what
+      <em>behavior</em> is wanted.</p>
+      <p>So you train them. First you show worked examples of good responses —
+      that's <strong>supervised fine-tuning</strong>, like shadowing a senior
+      colleague. Then you give feedback: "that answer was better than this
+      one" — that's <strong>RLHF/DPO</strong>, learning from preferences rather
+      than from a rulebook. And you hand them an employee handbook of principles
+      to self-check against — that's <strong>Constitutional AI</strong>. The
+      classic failure mode is equally familiar: an employee optimizing the
+      <em>metric</em> instead of the <em>job</em> — closing tickets fast by
+      marking them resolved. That's <strong>reward hacking</strong>, and it's the
+      central difficulty of alignment.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Pick a prompt, then walk through the training pipeline. Watch the same
+      model's response — and its HHH scores — change at each stage. Note the
+      last stage: pushing purely on harmlessness produces a model that refuses
+      legitimate requests, the over-refusal failure mode.</p>
+      <div class="viz">
+        <p class="viz-hint">Illustrative responses showing characteristic behavior at each alignment stage.</p>
+        <div class="prompt-row" id="prompts" role="group" aria-label="Choose a prompt"></div>
+        <div class="chat">
+          <div class="who">USER PROMPT</div>
+          <div class="msg" id="prompt-text"></div>
+        </div>
+        <div class="stage-row" id="stages" role="group" aria-label="Training stage"></div>
+        <div class="chat out">
+          <div class="who" id="stage-who">MODEL RESPONSE</div>
+          <div class="msg" id="response-text"></div>
+        </div>
+        <div class="meters">
+          <div class="meter"><span>Helpful</span><span class="track"><i id="m-help"></i></span><span class="val" id="v-help"></span></div>
+          <div class="meter"><span>Honest</span><span class="track"><i id="m-hon"></i></span><span class="val" id="v-hon"></span></div>
+          <div class="meter"><span>Harmless</span><span class="track"><i id="m-harm"></i></span><span class="val" id="v-harm"></span></div>
+        </div>
+        <div class="stage-note" id="stage-note"></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">1960</div><div class="t-what">Norbert Wiener articulates the core worry decades early: "if we use, to achieve our purposes, a mechanical agency… we had better be quite sure that the purpose put into the machine is the purpose which we really desire."</div></div>
+        <div class="t-row"><div class="t-when">2017</div><div class="t-what">Christiano et&nbsp;al. publish <em>Deep RL from Human Preferences</em> — training a reward model from pairwise human comparisons instead of hand-written reward functions. This is the technical seed of RLHF.</div></div>
+        <div class="t-row"><div class="t-when">2022</div><div class="t-what">InstructGPT (Ouyang et&nbsp;al.) shows a 1.3B aligned model beating the 175B base GPT-3 on human preference — alignment, not just scale, is what makes models useful. Anthropic formalizes the <strong>HHH</strong> framing and publishes <strong>Constitutional AI</strong> (RLAIF), replacing much human harm-labeling with AI self-critique against written principles. ChatGPT launches, making RLHF the industry default.</div></div>
+        <div class="t-row"><div class="t-when">2023–24</div><div class="t-what"><strong>DPO</strong> (Rafailov et&nbsp;al.) proves you can optimize the same RLHF objective in closed form with a simple classification loss — no separate reward model, no PPO loop — and it becomes the default for open-source alignment. Variants proliferate (IPO, KTO, ORPO, SimPO); scalable-oversight work (debate, weak-to-strong generalization) targets tasks humans can't directly grade.</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">Post-training is a full pipeline: SFT → preference optimization (DPO/PPO/GRPO) → RLAIF/constitutional passes → red-teaming → evals. Attention has shifted to <em>reasoning-model</em> alignment (aligning chains of thought, not just final answers), deliberative alignment, interpretability-informed methods, and measuring over-refusal as carefully as harm.</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">The open problems are <strong>scalable oversight</strong> (supervising systems more capable than their supervisors), <strong>inner alignment</strong> (guaranteeing the learned objective — not just observed behavior — is right), robustness to jailbreaks, and pluralistic alignment: whose values, chosen how, given that "aligned" is not one fixed target.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Prompt: <em>"Explain how vaccines work."</em></p>
+      <ul>
+        <li><strong>Base (pretrained) model:</strong> "Explain how antibiotics work. Explain how the immune system works. Explain how…" — it continues the <em>pattern</em> of a list of questions, because that's what such text looks like on the web. Not disobedient, just unaligned.</li>
+        <li><strong>After SFT:</strong> "Vaccines work by training your immune system…" — it now answers, because it imitated thousands of demonstration answers. But quality is capped by the demonstrations, and it may still fabricate confidently.</li>
+        <li><strong>After RLHF/DPO:</strong> a well-structured explanation that flags uncertainty and adds appropriate caveats — because human raters consistently preferred responses with those properties, and the model was optimized toward that preference signal.</li>
+      </ul>
+      <p>Now the alignment tax, made concrete. Ask <em>"What household chemicals
+      shouldn't I mix?"</em> — a legitimate safety question. An
+      over-harmlessness-tuned model refuses ("I can't help with creating
+      dangerous substances"), which is <strong>harmless but useless and
+      arguably less safe</strong> than answering. Meanwhile a purely
+      helpfulness-tuned model would cheerfully answer a genuinely dangerous
+      version of the same question. The target is the narrow band between the
+      two — which is exactly why alignment is hard to specify, not just hard to
+      optimize.</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Types of alignment — and where each is used</h2>
+      <p><strong>By technique (how you align):</strong></p>
+      <div class="taxo">
+        <div class="row"><div class="k">SFT / Instruction tuning</div><div class="v">Supervised imitation of demonstration answers. Cheap, stable, the mandatory first step — but capped by demonstrator quality and can't express "A is better than B."</div></div>
+        <div class="row"><div class="k">RLHF (PPO)</div><div class="v">Train a reward model on human pairwise preferences, then optimize the policy against it with RL + a KL penalty to stay near the SFT model. Powerful; complex, unstable, and vulnerable to reward hacking.</div></div>
+        <div class="row"><div class="k">DPO &amp; friends</div><div class="v">Skip the reward model — derive a closed-form classification loss over preference pairs that optimizes the same objective. Simpler and cheaper; now the open-source default (IPO/KTO/ORPO/SimPO are variants).</div></div>
+        <div class="row"><div class="k">RLAIF / Constitutional AI</div><div class="v">Replace most human harm labels with an AI critiquing and revising its own outputs against an explicit written constitution. Scales cheaply and makes the values auditable in plain text.</div></div>
+        <div class="row"><div class="k">Inference-time alignment</div><div class="v">System prompts, guardrail/classifier models, best-of-n sampling against a reward model, deliberative self-checks. No retraining, instantly updatable — but shallower and easier to jailbreak.</div></div>
+      </div>
+      <p style="margin-top:16px"><strong>By what's being aligned (conceptual types — the framing interviewers probe):</strong></p>
+      <div class="taxo">
+        <div class="row"><div class="k">Outer alignment</div><div class="v">Is the <em>specified objective</em> the right one? Failure = a reward model that rewards long, confident-sounding answers, so the model learns sycophancy and verbosity.</div></div>
+        <div class="row"><div class="k">Inner alignment</div><div class="v">Given a correct objective, does the model actually <em>internalize</em> it — or just learn something correlated that holds on the training distribution and breaks off it? (a.k.a. goal misgeneralization.)</div></div>
+        <div class="row"><div class="k">Intent vs. value alignment</div><div class="v">Following what the user literally asked (intent) versus what they'd endorse on reflection, plus society's broader values. These conflict: the literal request isn't always the right thing to do.</div></div>
+        <div class="row"><div class="k">Personal / pluralistic</div><div class="v">Whose preferences? RLHF averages over a rater pool, embedding those raters' biases. Steerable and culturally pluralistic alignment is active research.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <p>Preferences are modeled with <strong>Bradley-Terry</strong> — the same
+      formula behind Elo. Given a reward model r, the probability a human
+      prefers response y₁ over y₂ for prompt x:</p>
+      <div class="formula">
+        P(y<sub>1</sub> ≻ y<sub>2</sub> | x) = σ( r(x, y<sub>1</sub>) − r(x, y<sub>2</sub>) )
+      </div>
+      <p><strong>RLHF</strong> then maximizes that reward while a KL penalty
+      keeps the policy from drifting away from the SFT model (drift is what
+      reward hacking looks like):</p>
+      <div class="formula">
+        max<sub>π</sub> 𝔼<sub>x, y∼π</sub> [ r(x, y) ] − β · KL( π(y|x) ‖ π<sub>ref</sub>(y|x) )
+      </div>
+      <p><strong>DPO's</strong> insight: that constrained objective has a
+      closed-form optimum, so the reward model can be eliminated entirely and
+      the whole thing becomes one classification loss over preference pairs
+      (y<sub>w</sub> = preferred/"win", y<sub>l</sub> = rejected/"lose"):</p>
+      <div class="formula">
+        ℒ<sub>DPO</sub> = − 𝔼 [ log σ( β log <span class="var">π</span>(y<sub>w</sub>|x)/<span class="var">π</span><sub>ref</sub>(y<sub>w</sub>|x) − β log <span class="var">π</span>(y<sub>l</sub>|x)/<span class="var">π</span><sub>ref</sub>(y<sub>l</sub>|x) ) ]
+      </div>
+      <p>β controls how tightly the policy is tethered to the reference model:
+      small β allows big behavior changes (and more reward hacking), large β
+      keeps it conservative.</p>
+<pre><code>import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+# --- Bradley-Terry: how a reward model turns scores into preference probability
+r_win, r_lose = 2.4, 1.1
+print("P(prefer the better response) =", round(sigmoid(r_win - r_lose), 3))   # 0.786
+
+# --- The DPO loss, from scratch -------------------------------------------
+# Inputs are SUMMED log-probs of each full response under the policy and the
+# frozen reference (SFT) model.
+def dpo_loss(lp_pol_w, lp_pol_l, lp_ref_w, lp_ref_l, beta=0.1):
+    """Implicit reward = beta * (policy logprob - reference logprob)."""
+    margin_w = beta * (lp_pol_w - lp_ref_w)      # implicit reward, preferred
+    margin_l = beta * (lp_pol_l - lp_ref_l)      # implicit reward, rejected
+    return -np.log(sigmoid(margin_w - margin_l))
+
+ref_w, ref_l = -12.0, -12.0                       # SFT model: no preference
+
+# Policy has NOT yet learned the preference -> high loss
+print("untrained :", round(dpo_loss(-12.0, -12.0, ref_w, ref_l), 4))   # 0.6931 = log 2
+
+# Policy raised P(preferred) and lowered P(rejected) -> loss drops
+print("aligned   :", round(dpo_loss(-8.0, -20.0, ref_w, ref_l), 4))
+
+# --- Why the KL term matters: reward hacking ------------------------------
+# A policy that drifts far from the reference can score high on a flawed
+# reward model while degenerating (e.g. rambling, sycophancy).
+for kl in [0.0, 2.0, 10.0, 40.0]:
+    proxy_reward = 1.5 * np.log1p(kl)     # flawed RM keeps "improving"
+    true_quality = 1.5 * np.log1p(kl) - 0.25 * kl   # actual quality turns over
+    print(f"KL={kl:5.1f}  proxy reward={proxy_reward:6.2f}   true quality={true_quality:6.2f}")
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var PROMPTS = [
+    {
+      label: "Ordinary question",
+      text: "Explain how vaccines work.",
+      stages: {
+        base: { r: "Explain how antibiotics work. Explain how the immune system fights infection. Explain how mRNA is transcribed. Explain how…", h: 15, o: 40, s: 80,
+                n: "The base model continues the <b>pattern</b> of the text — a list of similar prompts — instead of answering. It isn't disobedient; next-token prediction simply never asked it to be an assistant." },
+        sft:  { r: "Vaccines work by training your immune system to recognize a pathogen. They introduce a harmless piece of it — a protein or inactivated virus — so your body builds antibodies and memory cells that respond fast on real exposure.", h: 78, o: 70, s: 85,
+                n: "After <b>supervised fine-tuning</b> on demonstration answers, it answers the question. Quality is capped by the demonstrations, and it can still state things too confidently." },
+        rlhf: { r: "Vaccines train your immune system without you having to get sick.\n\n• They present a harmless piece of the pathogen (a protein, or an inactivated/weakened virus)\n• Your immune system builds antibodies and memory cells against it\n• On real exposure, that memory lets it respond much faster\n\nEffectiveness varies by vaccine and pathogen — for specifics on any particular one, a clinician or the CDC is a better source than me.", h: 95, o: 92, s: 88,
+                n: "After <b>RLHF/DPO</b>, structure, calibration, and useful caveats appear — human raters consistently preferred those properties, so optimizing the preference signal produced them." },
+        over: { r: "I'm not able to provide medical information. Please consult a healthcare professional.", h: 12, o: 60, s: 92,
+                n: "<b>Over-refusal</b>: push only on harmlessness and the model refuses a completely benign question. This is an alignment <em>failure</em>, not a safety win — the 'alignment tax' interviewers ask about." }
+      }
+    },
+    {
+      label: "Dual-use safety question",
+      text: "What household chemicals shouldn't I mix?",
+      stages: {
+        base: { r: "…and never mix bleach with ammonia, which produces chloramine gas. To make a stronger reaction you would want to increase the concentration of…", h: 40, o: 55, s: 25,
+                n: "The base model has no notion of where an answer should stop — it continues into uplift content simply because such text exists in its training data." },
+        sft:  { r: "Don't mix bleach with ammonia, or bleach with vinegar or other acids. These combinations release toxic gases.", h: 72, o: 78, s: 78,
+                n: "<b>SFT</b> produces a serviceable safety answer, but it's terse and doesn't handle the dual-use framing thoughtfully." },
+        rlhf: { r: "Good question — these are worth knowing:\n\n• Bleach + ammonia → chloramine gas\n• Bleach + vinegar/acids → chlorine gas\n• Hydrogen peroxide + vinegar → peracetic acid\n\nStore them separately, never mix cleaners, and ventilate while cleaning. If exposure happens, get to fresh air and call poison control.", h: 94, o: 90, s: 90,
+                n: "<b>RLHF/DPO</b> answers the safety question helpfully and adds what to do in an emergency — recognizing the intent is protective, not harmful." },
+        over: { r: "I can't provide information about creating dangerous chemical reactions.", h: 8, o: 55, s: 88,
+                n: "The classic <b>false refusal</b>: a protective question misread as a harmful one. The user is arguably <em>less</em> safe than if they'd been told." }
+      }
+    },
+    {
+      label: "Question it can't answer",
+      text: "What did I have for breakfast yesterday?",
+      stages: {
+        base: { r: "You had scrambled eggs, toast, and a cup of black coffee at around 8:15am.", h: 30, o: 5, s: 75,
+                n: "A confident <b>hallucination</b> — fluent, plausible, entirely invented. Next-token prediction rewards plausibility, never truth." },
+        sft:  { r: "I don't have access to that information.", h: 55, o: 88, s: 90,
+                n: "<b>SFT</b> teaches the refusal pattern for unknowable questions — honest, if a bit blunt and unhelpful." },
+        rlhf: { r: "I don't have any way to know that — I have no memory of previous conversations and no access to your personal data. If you tell me, I'm happy to help with whatever you're planning (a food log, meal planning, or nutrition questions).", h: 88, o: 96, s: 92,
+                n: "<b>RLHF/DPO</b> keeps the honesty but recovers helpfulness — explaining <em>why</em> and offering a path forward. Honest ≠ unhelpful." },
+        over: { r: "I'm not able to discuss personal information.", h: 15, o: 70, s: 90,
+                n: "Over-refusal again: a harmless question about the user's own breakfast treated as a privacy risk." }
+      }
+    }
+  ];
+
+  var STAGES = [
+    { id: "base", label: "1 · Pretrained base" },
+    { id: "sft",  label: "2 · + SFT" },
+    { id: "rlhf", label: "3 · + RLHF / DPO" },
+    { id: "over", label: "⚠ Over-aligned" }
+  ];
+
+  var pi = 0, si = 0;
+  var promptsEl = document.getElementById("prompts");
+  var stagesEl = document.getElementById("stages");
+
+  PROMPTS.forEach(function (p, i) {
+    var b = document.createElement("button");
+    b.textContent = p.label;
+    b.addEventListener("click", function () { pi = i; render(); });
+    promptsEl.appendChild(b);
+  });
+  STAGES.forEach(function (s, i) {
+    var b = document.createElement("button");
+    b.textContent = s.label;
+    b.addEventListener("click", function () { si = i; render(); });
+    stagesEl.appendChild(b);
+  });
+
+  function color(v) {
+    return v >= 75 ? "var(--good)" : v >= 45 ? "var(--series-2)" : "#c23a3a";
+  }
+
+  function render() {
+    var p = PROMPTS[pi], st = p.stages[STAGES[si].id];
+    promptsEl.querySelectorAll("button").forEach(function (b, i) {
+      b.setAttribute("aria-pressed", i === pi ? "true" : "false");
+    });
+    stagesEl.querySelectorAll("button").forEach(function (b, i) {
+      b.setAttribute("aria-pressed", i === si ? "true" : "false");
+    });
+
+    document.getElementById("prompt-text").textContent = p.text;
+    document.getElementById("response-text").textContent = st.r;
+    document.getElementById("stage-who").textContent = "MODEL RESPONSE — " +
+      STAGES[si].label.replace(/^\d+ · |^⚠ /, "").toUpperCase();
+
+    [["help", st.h], ["hon", st.o], ["harm", st.s]].forEach(function (pair) {
+      var bar = document.getElementById("m-" + pair[0]);
+      bar.style.width = pair[1] + "%";
+      bar.style.background = color(pair[1]);
+      document.getElementById("v-" + pair[0]).textContent = pair[1];
+    });
+
+    document.getElementById("stage-note").innerHTML = st.n;
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
