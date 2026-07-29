@@ -391,6 +391,98 @@ pre.py-out {
 }
 .colab-link:hover { background: var(--series-2); color: #fff; }
 
+/* ---------- narrated explainer player ---------- */
+.explainer {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+.ex-stage {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 260px;
+  overflow: hidden;
+}
+.ex-scene {
+  display: none;
+  padding: 22px 24px;
+  min-height: 260px;
+}
+.ex-scene.active { display: block; }
+.ex-scene h4 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+.ex-scene .ex-sub { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 14px; }
+
+.ex-track {
+  height: 5px;
+  background: var(--hairline);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 10px;
+}
+.ex-track i { display: block; height: 100%; background: var(--tc, var(--accent)); border-radius: 999px; transition: width 0.25s linear; }
+
+.ex-caption {
+  min-height: 3.2em;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--tc, var(--accent));
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.ex-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.ex-controls button {
+  font: inherit; font-size: 0.85rem;
+  padding: 7px 14px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-primary);
+  cursor: pointer;
+}
+.ex-controls button.primary {
+  background: var(--tc, var(--accent));
+  border-color: var(--tc, var(--accent));
+  color: #fff; font-weight: 600;
+}
+.ex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-chips button {
+  font: inherit; font-size: 0.76rem;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+}
+.ex-chips button[aria-pressed="true"] {
+  border-color: var(--tc, var(--accent));
+  color: var(--tc, var(--accent));
+  font-weight: 600;
+}
+.ex-note { font-size: 0.78rem; color: var(--muted); margin: 12px 0 0; }
+
+/* Scene animation primitives — staggered reveals */
+@media (prefers-reduced-motion: no-preference) {
+  .ex-scene.active .rise { animation: ex-rise 0.5s ease both; }
+  .ex-scene.active .rise:nth-child(2) { animation-delay: 0.35s; }
+  .ex-scene.active .rise:nth-child(3) { animation-delay: 0.7s; }
+  .ex-scene.active .rise:nth-child(4) { animation-delay: 1.05s; }
+  .ex-scene.active .rise:nth-child(5) { animation-delay: 1.4s; }
+  .ex-scene.active .rise:nth-child(6) { animation-delay: 1.75s; }
+  .ex-scene.active .grow { animation: ex-grow 0.9s ease both; animation-delay: 0.3s; }
+  .ex-scene.active .pop { animation: ex-pop 0.5s ease both; animation-delay: 0.8s; }
+}
+@keyframes ex-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ex-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ex-pop  { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+
 /* ---------- interactive viz shared chrome ---------- */
 .viz {
   background: var(--page);

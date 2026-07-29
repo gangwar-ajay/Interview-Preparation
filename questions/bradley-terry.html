@@ -8,7 +8,32 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
 <script src="../assets/site.js"></script>
 <script src="../assets/pyrunner.js"></script>
+<script src="../assets/explainer.js"></script>
 <style>
+  /* explainer scene visuals */
+  .sc-verdicts { display: grid; gap: 8px; }
+  .vd { background: var(--page); border: 1px solid var(--hairline); border-radius: 8px; padding: 8px 14px; font-size: 0.92rem; }
+  .vd.muted-vd { color: var(--muted); border-style: dashed; }
+  .sc-formula { font-size: 1.5rem; text-align: center; padding: 14px 0 18px; }
+  .sc-gap { display: grid; gap: 10px; }
+  .gap-row { display: grid; grid-template-columns: 90px 1fr; gap: 12px; align-items: center; font-size: 0.85rem; }
+  .gbar { height: 14px; border-radius: 999px; background: var(--tc, var(--accent)); display: block; }
+  .gbar.alt { background: var(--series-2); }
+  .gap-out { font-size: 0.95rem; color: var(--text-secondary); padding-top: 4px; }
+  .sc-fit { display: grid; gap: 9px; }
+  .fit-row { display: grid; grid-template-columns: 68px 1fr 74px; gap: 12px; align-items: center; font-size: 0.85rem; }
+  .fit-row i { height: 15px; border-radius: 999px; background: var(--tc, var(--accent)); display: block; transform-origin: left center; }
+  .fit-row b { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); font-weight: 500; font-size: 0.82rem; }
+  .sc-chain { display: grid; gap: 10px; }
+  .chain-step { background: var(--page); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 14px; font-size: 0.95rem; }
+  .chain-step.chain-out { border-color: var(--series-2); border-width: 2px; }
+  .chain-step .pct { float: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  .chain-step .pct.hot { color: var(--series-2); font-weight: 700; }
+  .chain-step em { color: var(--muted); font-size: 0.82rem; }
+  .sc-cards { display: grid; gap: 10px; }
+  .sc-cards .card { background: var(--page); border: 1px solid var(--hairline); border-left: 3px solid var(--tc, var(--accent)); border-radius: 8px; padding: 10px 14px; }
+  .sc-cards .card b { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+  .sc-cards .card span { font-size: 0.85rem; color: var(--text-secondary); }
   .bt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
   @media (max-width: 700px) { .bt-grid { grid-template-columns: 1fr; } }
   .bt-h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
@@ -54,6 +79,77 @@
   <article class="question">
     <h1>What is the Bradley-Terry model for pairwise rankings?</h1>
     <p class="q-topic">Machine Learning · ranking · RLHF · statistics · maximum likelihood</p>
+
+    <section class="qsection" id="explainer">
+      <h2><span class="num">▶</span>Watch: the 90-second explainer</h2>
+      <p>Prefer to listen? This plays as a narrated animation — five scenes
+      covering the whole idea. Captions are shown throughout, and you can jump
+      to any scene.</p>
+      <div class="explainer" id="bt-explainer">
+        <div class="ex-stage">
+
+          <div class="ex-scene" data-title="The problem"
+               data-narration="Here's the problem Bradley-Terry solves. You have a pile of comparisons: Alpha beat Beta, Beta beat Gamma, Gamma beat Delta. But nobody ever gave anything a score. And the comparisons are incomplete — most pairs never met at all. So how do you turn scattered head-to-head results into one ranking?">
+            <h4>You only ever see "this beat that"</h4>
+            <p class="ex-sub">No scores. No complete round-robin. Just verdicts.</p>
+            <div class="sc-verdicts">
+              <div class="rise vd"><b>Alpha</b> beat <b>Beta</b></div>
+              <div class="rise vd"><b>Beta</b> beat <b>Gamma</b></div>
+              <div class="rise vd"><b>Gamma</b> beat <b>Delta</b></div>
+              <div class="rise vd muted-vd">Alpha vs Gamma — never played</div>
+              <div class="rise vd muted-vd">Beta vs Delta — never played</div>
+            </div>
+          </div>
+
+          <div class="ex-scene" data-title="The model"
+               data-narration="Bradley-Terry makes one assumption. Every item has a single hidden strength number, beta. The chance that i beats j depends only on the gap between their two betas, squashed through a logistic function. A bigger gap means a more lopsided matchup. An equal gap of zero means a coin flip.">
+            <h4>One hidden strength per item</h4>
+            <p class="ex-sub">Win probability depends only on the <em>gap</em> between strengths.</p>
+            <div class="sc-formula pop">P(i ≻ j) = σ(β<sub>i</sub> − β<sub>j</sub>)</div>
+            <div class="sc-gap">
+              <div class="rise gap-row"><span>β<sub>i</sub> = 1.2</span><span class="gbar" style="width:78%"></span></div>
+              <div class="rise gap-row"><span>β<sub>j</sub> = 0.3</span><span class="gbar alt" style="width:46%"></span></div>
+              <div class="rise gap-out">gap 0.9 → σ(0.9) = <b>71%</b> chance i wins</div>
+            </div>
+          </div>
+
+          <div class="ex-scene" data-title="Fitting it"
+               data-narration="Now the clever part. Given all the recorded battles, we ask: which set of hidden strengths makes the results we actually observed as likely as possible? That's maximum likelihood. The standard algorithm sweeps through the items repeatedly, and every item's strength settles into place — using not just who it beat, but how strong those opponents were.">
+            <h4>Fit all strengths at once, by maximum likelihood</h4>
+            <p class="ex-sub">"Which β's make the observed results most probable?"</p>
+            <div class="sc-fit">
+              <div class="rise fit-row"><span>Alpha</span><i class="grow" style="width:88%"></i><b>β 1.05</b></div>
+              <div class="rise fit-row"><span>Beta</span><i class="grow" style="width:62%"></i><b>β 0.26</b></div>
+              <div class="rise fit-row"><span>Gamma</span><i class="grow" style="width:48%"></i><b>β −0.14</b></div>
+              <div class="rise fit-row"><span>Delta</span><i class="grow" style="width:22%"></i><b>β −1.17</b></div>
+            </div>
+            <p class="ex-sub" style="margin-top:12px">Beating a <em>strong</em> opponent lifts you more than beating a weak one.</p>
+          </div>
+
+          <div class="ex-scene" data-title="The payoff"
+               data-narration="And here's the payoff. Alpha and Gamma never played each other. But Alpha beat Beta seventy percent of the time, and Beta beat Gamma seventy percent of the time. Chaining through their shared opponent, the model predicts Alpha beats Gamma about eighty-five percent of the time. That's how a leaderboard ranks hundreds of models without a full round-robin.">
+            <h4>It predicts matchups that never happened</h4>
+            <div class="sc-chain">
+              <div class="rise chain-step"><b>Alpha</b> beats <b>Beta</b> <span class="pct">70%</span></div>
+              <div class="rise chain-step"><b>Beta</b> beats <b>Gamma</b> <span class="pct">70%</span></div>
+              <div class="rise chain-step chain-out"><b>Alpha</b> beats <b>Gamma</b> <span class="pct hot">≈85%</span> <em>— never played</em></div>
+            </div>
+            <p class="ex-sub" style="margin-top:14px">The same assumption is also the limit: it <em>forces</em> transitivity, so it can't represent rock-paper-scissors preferences.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Why it matters"
+               data-narration="Why does this matter today? Because a human saying I prefer response A over response B is exactly a pairwise comparison. The reward model loss used in RLHF is literally the Bradley-Terry likelihood. DPO derives its loss from the same formula. And LLM arenas fit Bradley-Terry over millions of votes, because unlike Elo it doesn't depend on the order the battles arrived in.">
+            <h4>It's inside modern LLM training</h4>
+            <div class="sc-cards">
+              <div class="rise card"><b>RLHF reward models</b><span>The training loss <em>is</em> the Bradley-Terry likelihood over (chosen, rejected) pairs.</span></div>
+              <div class="rise card"><b>DPO</b><span>Its loss is derived from the same likelihood, with reward written as a policy log-ratio.</span></div>
+              <div class="rise card"><b>LLM arenas</b><span>Fit over millions of human votes — order-independent, unlike sequential Elo.</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
 
     <section class="qsection" id="definition">
       <h2><span class="num">1</span>Definition</h2>
