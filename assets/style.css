@@ -468,6 +468,34 @@ pre.py-out {
 }
 .ex-note { font-size: 0.78rem; color: var(--muted); margin: 12px 0 0; }
 
+/* Code-walkthrough mode: a shared code panel + per-scene line highlighting */
+.explainer.code-mode .ex-stage { min-height: 0; }
+.explainer.code-mode .ex-scene { min-height: 0; padding: 14px 18px; }
+.explainer.code-mode .ex-scene h4 { margin: 0 0 4px; font-size: 0.98rem; }
+.ex-code {
+  display: block;
+  background: var(--code-bg);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 0;
+  margin: 0 0 12px;
+  max-height: 340px;
+  overflow: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+.ex-line { display: flex; gap: 12px; padding: 0 14px; border-left: 3px solid transparent; transition: background-color 0.3s, opacity 0.3s; }
+.ex-lnum { flex: none; width: 20px; text-align: right; color: var(--muted); user-select: none; font-size: 0.74rem; }
+.ex-ltext { white-space: pre; color: var(--text-primary); }
+.ex-line.dim { opacity: 0.32; }
+.ex-line.hot { background: var(--accent-soft); border-left-color: var(--tc, var(--accent)); }
+:root[data-theme="dark"] .ex-line.hot { background: rgba(57, 135, 229, 0.18); }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .ex-line.hot { background: rgba(57, 135, 229, 0.18); }
+}
+
 /* Scene animation primitives — staggered reveals */
 @media (prefers-reduced-motion: no-preference) {
   .ex-scene.active .rise { animation: ex-rise 0.5s ease both; }

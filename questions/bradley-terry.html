@@ -295,6 +295,90 @@
       </div>
       <p>where W<sub>i</sub> is i's total wins and n<sub>ij</sub> the games between
       i and j — renormalizing after each sweep.</p>
+
+      <h3 style="font-size:1rem;margin:22px 0 6px">▶ Watch: the code, line by line</h3>
+      <p>A narrated walkthrough of the fitting function — each scene highlights
+      the lines it's explaining.</p>
+      <div class="explainer code-mode" id="bt-code-explainer">
+        <pre class="ex-code">import numpy as np
+
+def fit_bradley_terry(W, iters=200, tol=1e-10):
+    """W[i][j] = times i beat j.  Returns log-strengths beta."""
+    n = W.shape[0]
+    N = W + W.T                    # games played between each pair
+    wins = W.sum(axis=1)           # total wins per item
+    p = np.ones(n)                 # p = exp(beta), all equal to start
+
+    for _ in range(iters):
+        p_old = p.copy()
+        for i in range(n):
+            denom = sum(N[i, j] / (p[i] + p[j])
+                        for j in range(n) if j != i)
+            p[i] = wins[i] / denom
+        p /= p.prod() ** (1 / n)   # anchor: geometric mean = 1
+        if np.max(np.abs(p - p_old)) &lt; tol:
+            break
+    return np.log(p)
+
+W = np.array([[0, 7, 0],           # A beat B 7 times
+              [3, 0, 7],           # B beat A 3, beat C 7
+              [0, 3, 0]], float)   # C beat B 3 times
+
+beta = fit_bradley_terry(W)
+beta = beta - beta[1]              # anchor at B = 0 for readability
+print(beta.round(3))               # [ 0.847  0.    -0.847]</pre>
+        <div class="ex-stage">
+
+          <div class="ex-scene" data-title="The input" data-lines="21-23"
+               data-narration="Everything starts with the win matrix. Row i, column j holds the number of times i beat j. A beat B seven times, B beat A three times, and B beat C seven times. Notice the zeros in the corner: A and C never played each other at all.">
+            <h4>The input: a win matrix</h4>
+            <p class="ex-sub">W[i][j] = how many times i beat j. Zeros mean the pair never met.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Signature" data-lines="3-5"
+               data-narration="The function takes that matrix and returns one strength number per item. Iters caps how many sweeps we do, and tol is how small a change counts as converged. Both have sensible defaults, so most callers just pass the matrix.">
+            <h4>What goes in, what comes out</h4>
+            <p class="ex-sub">Matrix in, one strength per item out.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Two summaries" data-lines="6-7"
+               data-narration="Two summaries do most of the bookkeeping. N is the matrix plus its own transpose, which gives the total games played between each pair, regardless of who won. And wins is each row's sum: the total number of victories for that item.">
+            <h4>Precompute games played and total wins</h4>
+            <p class="ex-sub"><code>N = W + Wᵀ</code> → games per pair · <code>W.sum(axis=1)</code> → wins per item</p>
+          </div>
+
+          <div class="ex-scene" data-title="Start equal" data-lines="8"
+               data-narration="We start by assuming every item is equally strong. P holds strengths on a positive scale, where p equals e to the beta. Setting them all to one is the same as setting every beta to zero: a completely neutral starting guess that the data will pull apart.">
+            <h4>Start from total ignorance</h4>
+            <p class="ex-sub">All strengths equal — the data does the rest.</p>
+          </div>
+
+          <div class="ex-scene" data-title="The core update" data-lines="12-15"
+               data-narration="Here is the heart of the algorithm. For each item, we divide its total wins by a sum over every opponent, of games played divided by the combined strength of the pair. Read it as: your wins, discounted by how strong the opponents were. Beating strong opponents makes that denominator small, which makes your strength large.">
+            <h4>The MM update — the whole algorithm</h4>
+            <p class="ex-sub">Wins ÷ opponent-strength-weighted games. Beating strong opponents counts for more.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Anchoring" data-lines="16"
+               data-narration="This line handles identifiability. Only differences between strengths are determined by the data, so multiplying every p by the same constant gives an equally good fit. We pin the scale down by dividing through by the geometric mean, which forces the strengths to sit around one. Without this line the numbers would drift every sweep.">
+            <h4>Pin down the scale</h4>
+            <p class="ex-sub">Only <em>differences</em> are identified — so anchor, or the values drift forever.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Convergence" data-lines="17-19"
+               data-narration="If no strength moved by more than the tolerance, we've converged and can stop early. Otherwise we sweep again. Finally we take the logarithm to convert back from p to beta, the log-strength scale where the sigmoid formula applies.">
+            <h4>Stop early, return log-strengths</h4>
+            <p class="ex-sub">MM is monotone — every sweep improves the likelihood, so it always converges.</p>
+          </div>
+
+          <div class="ex-scene" data-title="Run it" data-lines="25-27"
+               data-narration="Running it on our example gives plus zero point eight four seven, zero, and minus zero point eight four seven. That middle subtraction just shifts B to zero so the numbers are easy to read. And zero point eight four seven is exactly the natural log of seven over three, which is what you'd derive by hand from a seventy percent win rate. The algorithm recovered the right answer.">
+            <h4>The result</h4>
+            <p class="ex-sub">β = [+0.847, 0, −0.847] — exactly <code>ln(0.7/0.3)</code>, the hand-derived answer.</p>
+          </div>
+
+        </div>
+      </div>
 <pre><code>import numpy as np
 
 def sigmoid(z):

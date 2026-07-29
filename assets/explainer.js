@@ -39,9 +39,58 @@
       s._chunks = text ? text.match(/[^.!?]+[.!?]*/g).map(function (t) { return t.trim(); }).filter(Boolean) : [];
     });
 
+    // Optional code-walkthrough mode: one shared code panel whose lines get
+    // highlighted per scene via data-lines="start-end" (1-based, inclusive).
+    this.codeEl = root.querySelector(".ex-code");
+    if (this.codeEl) this.prepareCode();
+
     this.buildUI();
     this.show(0);
   }
+
+  /* Split the code block into per-line rows so scenes can highlight ranges.
+     Text only — no syntax parsing, so nothing can be mis-escaped. */
+  ExplainerPlayer.prototype.prepareCode = function () {
+    var lines = this.codeEl.textContent.replace(/\n+$/, "").split("\n");
+    this.codeEl.textContent = "";
+    this.codeLines = lines.map(function (line, i) {
+      var row = document.createElement("div");
+      row.className = "ex-line";
+      var num = document.createElement("span");
+      num.className = "ex-lnum";
+      num.textContent = i + 1;
+      var txt = document.createElement("span");
+      txt.className = "ex-ltext";
+      txt.textContent = line || " ";
+      row.appendChild(num);
+      row.appendChild(txt);
+      this.codeEl.appendChild(row);
+      return row;
+    }, this);
+  };
+
+  ExplainerPlayer.prototype.highlightLines = function (spec) {
+    if (!this.codeLines) return;
+    var ranges = (spec || "").split(",").map(function (r) {
+      var m = r.trim().split("-");
+      return [parseInt(m[0], 10), parseInt(m[1] === undefined ? m[0] : m[1], 10)];
+    }).filter(function (r) { return !isNaN(r[0]); });
+
+    var any = ranges.length > 0;
+    var first = null;
+    this.codeLines.forEach(function (row, idx) {
+      var n = idx + 1;
+      var on = ranges.some(function (r) { return n >= r[0] && n <= r[1]; });
+      row.classList.toggle("hot", on);
+      row.classList.toggle("dim", any && !on);
+      if (on && first === null) first = row;
+    });
+
+    if (first && this.codeEl.scrollHeight > this.codeEl.clientHeight) {
+      var target = first.offsetTop - this.codeEl.clientHeight / 3;
+      this.codeEl.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    }
+  };
 
   ExplainerPlayer.prototype.speechAvailable = function () {
     return typeof window.speechSynthesis !== "undefined" &&
@@ -136,6 +185,7 @@
       c.setAttribute("aria-pressed", k === self.i ? "true" : "false");
     });
     this.caption.textContent = this.scenes[this.i].dataset.narration || "";
+    if (this.codeLines) this.highlightLines(this.scenes[this.i].dataset.lines);
     this.updateProgress(0);
   };
 
