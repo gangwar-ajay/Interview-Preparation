@@ -4,6 +4,13 @@
 
 var QUESTIONS = [
   {
+    title: "What is the Bradley-Terry model for pairwise rankings?",
+    topic: "Machine Learning",
+    tags: ["Bradley-Terry", "ranking", "RLHF", "maximum likelihood"],
+    file: "bradley-terry.html",
+    added: "2026-07-28"
+  },
+  {
     title: "What is alignment in LLMs, and what are the different types?",
     topic: "LLMs",
     tags: ["alignment", "RLHF", "DPO", "Constitutional AI", "safety"],

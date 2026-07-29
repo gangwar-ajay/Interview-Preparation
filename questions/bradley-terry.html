@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is the Bradley-Terry model for pairwise rankings? — InterviewPrep</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<script src="../assets/site.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<style>
+  .bt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 700px) { .bt-grid { grid-template-columns: 1fr; } }
+  .bt-h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
+  table.wm { border-collapse: collapse; width: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  table.wm th, table.wm td { border: 1px solid var(--hairline); padding: 0; text-align: center; }
+  table.wm th { color: var(--muted); font-weight: 600; padding: 4px 6px; background: var(--surface); font-size: 0.75rem; }
+  table.wm td button {
+    width: 100%; border: 0; background: transparent; cursor: pointer;
+    font: inherit; font-size: 0.82rem; font-variant-numeric: tabular-nums;
+    color: var(--text-primary); padding: 7px 4px;
+  }
+  table.wm td button:hover { background: var(--accent-soft); }
+  table.wm td.diag { background: var(--hairline); }
+  .bars { display: grid; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: 74px 1fr 118px; gap: 10px; align-items: center; font-size: 0.85rem; }
+  .bar-row .track { height: 16px; background: var(--hairline); border-radius: 999px; overflow: hidden; }
+  .bar-row .track i { display: block; height: 100%; border-radius: 999px; background: var(--tc, var(--accent)); transition: width 0.4s ease; }
+  .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 0.8rem; }
+  .pair-pred {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px; font-size: 0.88rem;
+  }
+  .pair-pred select {
+    font: inherit; font-size: 0.85rem; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--page); color: var(--text-primary);
+  }
+  .pair-pred .big { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand" href="../index.html">Interview<span>Prep</span></a>
+    <div class="site-nav">
+      <a class="nav-link" href="../playground.html">🐍 Playground</a>
+      <a class="nav-link" href="../notebooks.html">📓 Colab</a>
+      <button id="theme-toggle" type="button">☾ Dark</button>
+    </div>
+  </header>
+
+  <nav class="crumb"><a href="../index.html">← All questions</a></nav>
+
+  <article class="question">
+    <h1>What is the Bradley-Terry model for pairwise rankings?</h1>
+    <p class="q-topic">Machine Learning · ranking · RLHF · statistics · maximum likelihood</p>
+
+    <section class="qsection" id="definition">
+      <h2><span class="num">1</span>Definition</h2>
+      <p>The <strong>Bradley-Terry model</strong> is a probability model for
+      <strong>pairwise comparisons</strong>. It assumes every item <em>i</em> has
+      a single latent <strong>strength</strong> parameter β<sub>i</sub>, and the
+      probability that <em>i</em> beats <em>j</em> depends only on the difference
+      between their strengths, passed through a logistic function:
+      <code>P(i ≻ j) = σ(β<sub>i</sub> − β<sub>j</sub>)</code>. Given a pile of
+      recorded comparisons — who beat whom, how often — you recover all the
+      β's at once by <strong>maximum likelihood</strong>, producing a single
+      global ranking from purely local, incomplete head-to-head data.</p>
+      <p>Two things make it central to modern ML. First, it's the statistical
+      foundation of <strong>RLHF reward models</strong>: "human preferred
+      response A over B" is exactly a pairwise comparison, and the standard
+      reward-model loss <em>is</em> the Bradley-Terry negative log-likelihood.
+      Second, it's what LLM arenas actually fit — Elo processes matches
+      sequentially and is therefore order-dependent, whereas Bradley-Terry
+      fits <em>all</em> battles simultaneously and gives one order-independent
+      answer plus proper confidence intervals.</p>
+    </section>
+
+    <section class="qsection" id="analogy">
+      <h2><span class="num">2</span>Analogy</h2>
+      <p>Imagine a office <strong>coffee taste-test</strong> where nobody ever
+      rates a coffee out of ten — every participant only ever says "I like this
+      cup better than that one." You end up with a heap of scattered verdicts:
+      Ethiopian beat Colombian twice, Colombian beat Sumatran three times,
+      Sumatran beat Ethiopian once. No coffee has a score, no two people tried
+      the same set, and the comparisons even contradict each other.</p>
+      <p>Bradley-Terry is the statistician who walks in and says: <em>suppose
+      each coffee has one hidden "tastiness" number, and the chance one wins a
+      matchup depends only on the gap between those numbers.</em> Then it asks:
+      which set of hidden numbers would make the verdicts we actually observed
+      as likely as possible? Out come consistent scores, from data that never
+      contained a single score — and the contradictions get absorbed as noise
+      rather than breaking the ranking.</p>
+    </section>
+
+    <section class="qsection" id="visualization">
+      <h2><span class="num">3</span>Interactive visualization</h2>
+      <p>Click any cell in the win matrix to record "row beat column" — the
+      Bradley-Terry strengths <strong>refit instantly</strong> by maximum
+      likelihood over every recorded battle. Notice: the fit uses <em>indirect</em>
+      evidence too, so beating a strong opponent lifts you more than beating a
+      weak one, and models that never played each other still get compared.</p>
+      <div class="viz">
+        <p class="viz-hint">Cell (row, col) = times row beat col. Strengths are refit from scratch on every click via MM iterations — order of clicks never matters.</p>
+        <div class="controls">
+          <button id="bt-sim" type="button" class="primary">Simulate 30 battles</button>
+          <button id="bt-clear" type="button">Clear</button>
+          <button id="bt-preset" type="button">Reset to example</button>
+        </div>
+        <div class="bt-grid">
+          <div>
+            <div class="bt-h">WIN MATRIX — click to add a win</div>
+            <table class="wm" id="wm"></table>
+          </div>
+          <div>
+            <div class="bt-h">FITTED BRADLEY-TERRY STRENGTHS</div>
+            <div class="bars" id="bars"></div>
+            <div class="pair-pred">
+              <div>Predicted matchup:
+                <select id="sel-a"></select> vs <select id="sel-b"></select>
+              </div>
+              <div style="margin-top:6px"><span class="big" id="pair-p"></span>
+                <span id="pair-txt" style="color:var(--text-secondary)"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="bt-readout"></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="history">
+      <h2><span class="num">4</span>History → Current → Future</h2>
+      <div class="timeline">
+        <div class="t-row"><div class="t-when">1929</div><div class="t-what">Ernst Zermelo (better known for set theory) derives the model and its iterative MLE algorithm to rank chess players from incomplete tournament results — decades before it was rediscovered.</div></div>
+        <div class="t-row"><div class="t-when">1952</div><div class="t-what">Ralph Bradley and Milton Terry publish the paper that gives the model its name, framing it as the standard method for analyzing paired-comparison experiments (taste tests, product preference studies).</div></div>
+        <div class="t-row"><div class="t-when">1959–2004</div><div class="t-what">Luce's choice axiom generalizes it to multi-way choice (Plackett-Luce for full rankings); Elo adapts the same logistic form into an online, sequentially-updated approximation for chess; Hunter (2004) formalizes the MM algorithm that makes fitting fast and guaranteed to converge.</div></div>
+        <div class="t-row"><div class="t-when">2017–2022</div><div class="t-what">Christiano et&nbsp;al. use it as the likelihood for learning reward models from human preferences; InstructGPT and ChatGPT make that the default RLHF recipe, putting Bradley-Terry inside essentially every aligned LLM.</div></div>
+        <div class="t-row"><div class="t-when">Current</div><div class="t-what">LMArena and similar leaderboards report Bradley-Terry fits with bootstrapped confidence intervals rather than raw Elo, precisely for order-independence. <strong>DPO</strong> derives its loss directly from the Bradley-Terry likelihood — it's the same model, with the implicit reward written in terms of policy log-ratios. Extensions add ties (Davidson), home advantage, and per-rater effects.</div></div>
+        <div class="t-row"><div class="t-when">Future</div><div class="t-what">Work is moving beyond the model's core assumption that one scalar per item suffices: intransitive preferences (rock-paper-scissors dynamics), heterogeneous and pluralistic raters, style-controlled fits that separate substance from verbosity/formatting, and preference models with uncertainty for active data collection.</div></div>
+      </div>
+    </section>
+
+    <section class="qsection" id="example">
+      <h2><span class="num">5</span>Example</h2>
+      <p>Three models. A beat B <strong>7</strong> of 10 times; B beat C
+      <strong>7</strong> of 10 times; <strong>A and C never played</strong>.</p>
+      <ul>
+        <li>From A vs B: σ(β<sub>A</sub> − β<sub>B</sub>) = 0.7 → β<sub>A</sub> − β<sub>B</sub> = ln(0.7/0.3) ≈ <strong>0.85</strong></li>
+        <li>From B vs C: likewise β<sub>B</sub> − β<sub>C</sub> ≈ <strong>0.85</strong></li>
+        <li>Fixing β<sub>B</sub> = 0 (strengths are only defined up to a shift): β<sub>A</sub> ≈ 0.85, β<sub>C</sub> ≈ −0.85</li>
+        <li><strong>Therefore</strong> P(A beats C) = σ(0.85 − (−0.85)) = σ(1.70) ≈ <strong>0.85</strong></li>
+      </ul>
+      <p>That last line is the whole point: the model predicts an
+      <strong>85% win rate for a matchup that was never played</strong>, by
+      chaining through their common opponent. This is what lets an arena rank
+      hundreds of models without any of them playing a full round-robin — and
+      it's also the model's main assumption laid bare, since it forces
+      transitivity: it <em>cannot</em> represent "A beats B, B beats C, C beats
+      A" rock-paper-scissors structure.</p>
+    </section>
+
+    <section class="qsection" id="usecase">
+      <h2><span class="num">6</span>Use cases</h2>
+      <ul>
+        <li><strong>RLHF reward models:</strong> the reward-model training loss is literally the Bradley-Terry negative log-likelihood over (chosen, rejected) response pairs — the single most important use in modern ML.</li>
+        <li><strong>DPO and preference optimization:</strong> DPO's loss is derived from this likelihood, with the reward re-expressed as a policy/reference log-ratio.</li>
+        <li><strong>LLM leaderboards:</strong> LMArena/Chatbot Arena fits Bradley-Terry over millions of anonymous human votes, with bootstrapped CIs.</li>
+        <li><strong>Sports &amp; esports ranking:</strong> its original home — ranking teams and players from incomplete schedules where not everyone plays everyone.</li>
+        <li><strong>Product &amp; UX research:</strong> A/B preference tests, taste tests, and conjoint-style studies where people compare rather than score.</li>
+        <li><strong>Search &amp; recommender ranking:</strong> learning-to-rank from pairwise click/preference judgments (RankNet uses the same logistic pairwise likelihood).</li>
+        <li><strong>Evaluation with LLM judges:</strong> aggregating thousands of "which response is better" judgments into one score per system.</li>
+      </ul>
+    </section>
+
+    <section class="qsection" id="math">
+      <h2><span class="num">7</span>Math &amp; Python</h2>
+      <p>The model, in strength-difference (logit) form:</p>
+      <div class="formula">
+        P(i ≻ j) = σ(β<sub>i</sub> − β<sub>j</sub>) =
+        e<sup>β<sub>i</sub></sup> / (e<sup>β<sub>i</sub></sup> + e<sup>β<sub>j</sub></sup>)
+      </div>
+      <p>Writing p<sub>i</sub> = e<sup>β<sub>i</sub></sup> gives the classic
+      "ratio" form P(i ≻ j) = p<sub>i</sub>/(p<sub>i</sub> + p<sub>j</sub>). With
+      w<sub>ij</sub> = times i beat j, the log-likelihood over all pairs is:</p>
+      <div class="formula">
+        ℓ(β) = Σ<sub>i,j</sub> w<sub>ij</sub> · log σ(β<sub>i</sub> − β<sub>j</sub>)
+      </div>
+      <p>Two notes that matter in interviews. <strong>(1) Identifiability:</strong>
+      only <em>differences</em> are determined, so you must anchor the scale (fix
+      β₁ = 0, or center them) — otherwise adding a constant to every β gives an
+      identical likelihood. <strong>(2) Existence:</strong> the MLE is finite only
+      if the comparison graph is <em>strongly connected</em>; if some item never
+      loses (or a group never plays another group), its strength runs to ±∞ and
+      you need regularization. The standard fitting method is the
+      <strong>MM (minorize-maximize) algorithm</strong>, which is monotone and
+      needs no step size:</p>
+      <div class="formula">
+        p<sub>i</sub> ← W<sub>i</sub> ⁄ Σ<sub>j≠i</sub> [ n<sub>ij</sub> / (p<sub>i</sub> + p<sub>j</sub>) ]
+      </div>
+      <p>where W<sub>i</sub> is i's total wins and n<sub>ij</sub> the games between
+      i and j — renormalizing after each sweep.</p>
+<pre><code>import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def fit_bradley_terry(W, iters=200, tol=1e-10):
+    """W[i][j] = number of times i beat j.  Returns strengths beta (centered).
+    Uses the MM algorithm (Zermelo/Hunter): monotone, no learning rate."""
+    n = W.shape[0]
+    N = W + W.T                      # total games between each pair
+    wins = W.sum(axis=1)             # total wins per item
+    p = np.ones(n)                   # positive-scale strengths, p = exp(beta)
+
+    for _ in range(iters):
+        p_old = p.copy()
+        for i in range(n):
+            denom = sum(N[i, j] / (p[i] + p[j]) for j in range(n) if j != i)
+            p[i] = wins[i] / denom if denom > 0 else p[i]
+        p /= p.prod() ** (1 / n)     # anchor the scale (geometric mean = 1)
+        if np.max(np.abs(p - p_old)) < tol:
+            break
+    return np.log(p)                 # back to log-strengths (beta)
+
+# --- The worked example: A beat B 7/10, B beat C 7/10, A never played C ----
+#        A   B   C
+W = np.array([[0,  7,  0],       # A beat B 7 times
+              [3,  0,  7],       # B beat A 3, beat C 7
+              [0,  3,  0]], float)
+
+beta = fit_bradley_terry(W)
+beta = beta - beta[1]                       # anchor at B = 0 for readability
+print("strengths (A, B, C):", beta.round(3))          # ~ [0.85, 0.0, -0.85]
+print("P(A beats C), never played:",
+      round(sigmoid(beta[0] - beta[2]), 3))           # ~ 0.847
+
+# --- Same model as an RLHF reward-model loss ------------------------------
+# Each row is one human preference: reward of chosen vs rejected response.
+r_chosen  = np.array([2.4, 1.9, 3.1, 0.8])
+r_rejected = np.array([1.1, 2.2, 0.4, 0.5])
+bt_loss = -np.mean(np.log(sigmoid(r_chosen - r_rejected)))
+print("Bradley-Terry / reward-model loss:", round(bt_loss, 4))
+# Identical formula: preference likelihood == reward model training objective.
+</code></pre>
+    </section>
+  </article>
+
+  <footer class="site">
+    <a href="../index.html">← All questions</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var NAMES = ["Alpha", "Beta", "Gamma", "Delta"];
+  var n = NAMES.length;
+  var PRESET = [
+    [0, 7, 6, 9],
+    [3, 0, 5, 8],
+    [2, 3, 0, 6],
+    [1, 2, 2, 0]
+  ];
+  var W = PRESET.map(function (r) { return r.slice(); });
+
+  var wmEl = document.getElementById("wm");
+  var barsEl = document.getElementById("bars");
+  var selA = document.getElementById("sel-a"), selB = document.getElementById("sel-b");
+  var readout = document.getElementById("bt-readout");
+
+  NAMES.forEach(function (nm, i) {
+    [selA, selB].forEach(function (sel) {
+      var o = document.createElement("option");
+      o.value = i; o.textContent = nm;
+      sel.appendChild(o);
+    });
+  });
+  selA.value = 0; selB.value = 2;
+
+  function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+  /* MM (Zermelo/Hunter) fit — same algorithm as the Python above. */
+  function fit(W) {
+    var p = new Array(n).fill(1);
+    var wins = W.map(function (row) { return row.reduce(function (a, b) { return a + b; }, 0); });
+    for (var it = 0; it < 300; it++) {
+      for (var i = 0; i < n; i++) {
+        var denom = 0;
+        for (var j = 0; j < n; j++) {
+          if (j === i) continue;
+          var nij = W[i][j] + W[j][i];
+          if (nij > 0) denom += nij / (p[i] + p[j]);
+        }
+        if (denom > 0 && wins[i] > 0) p[i] = wins[i] / denom;
+        else if (wins[i] === 0) p[i] = 1e-6;      // never won: floor it
+      }
+      // anchor scale: geometric mean = 1
+      var logsum = p.reduce(function (a, v) { return a + Math.log(v); }, 0);
+      var g = Math.exp(logsum / n);
+      for (var k = 0; k < n; k++) p[k] /= g;
+    }
+    return p.map(function (v) { return Math.log(v); });
+  }
+
+  function buildMatrix() {
+    wmEl.innerHTML = "";
+    var head = document.createElement("tr");
+    head.appendChild(document.createElement("th"));
+    NAMES.forEach(function (nm) {
+      var th = document.createElement("th");
+      th.textContent = "vs " + nm.slice(0, 2);
+      head.appendChild(th);
+    });
+    wmEl.appendChild(head);
+
+    NAMES.forEach(function (nm, i) {
+      var tr = document.createElement("tr");
+      var th = document.createElement("th");
+      th.textContent = nm;
+      tr.appendChild(th);
+      NAMES.forEach(function (_, j) {
+        var td = document.createElement("td");
+        if (i === j) {
+          td.className = "diag";
+        } else {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = W[i][j];
+          btn.title = NAMES[i] + " beat " + NAMES[j] + " " + W[i][j] + "× — click to add one";
+          btn.addEventListener("click", function () { W[i][j]++; render(); });
+          td.appendChild(btn);
+        }
+        tr.appendChild(td);
+      });
+      wmEl.appendChild(tr);
+    });
+  }
+
+  function render() {
+    buildMatrix();
+    var beta = fit(W);
+    var total = W.reduce(function (a, row) { return a + row.reduce(function (x, y) { return x + y; }, 0); }, 0);
+
+    var order = NAMES.map(function (nm, i) { return i; })
+      .sort(function (a, b) { return beta[b] - beta[a]; });
+    var lo = Math.min.apply(null, beta), hi = Math.max.apply(null, beta);
+
+    barsEl.innerHTML = "";
+    order.forEach(function (i) {
+      var row = document.createElement("div");
+      row.className = "bar-row";
+      var frac = hi === lo ? 1 : 0.08 + 0.92 * (beta[i] - lo) / (hi - lo);
+      // Elo-equivalent scale, purely for readability: 400/ln(10) * beta
+      var elo = Math.round(1500 + beta[i] * 400 / Math.LN10);
+      row.innerHTML = "<span>" + NAMES[i] + "</span>" +
+        '<span class="track"><i style="width:' + (frac * 100) + '%"></i></span>' +
+        '<span class="num">β ' + beta[i].toFixed(2) + " · ≈" + elo + "</span>";
+      barsEl.appendChild(row);
+    });
+
+    var a = +selA.value, bsel = +selB.value;
+    var pab = sigmoid(beta[a] - beta[bsel]);
+    document.getElementById("pair-p").textContent = (pab * 100).toFixed(1) + "%";
+    var played = W[a][bsel] + W[bsel][a];
+    document.getElementById("pair-txt").textContent =
+      "chance " + NAMES[a] + " beats " + NAMES[bsel] +
+      (a === bsel ? " (same model)" : played === 0
+        ? " — never played each other; inferred through shared opponents"
+        : " — " + played + " recorded battle" + (played === 1 ? "" : "s"));
+
+    readout.textContent = total + " battles recorded. Strengths are identified only up to a shift, " +
+      "so they're anchored here at geometric mean 1 (β centered); the ≈ number rescales β onto a familiar Elo-like scale.";
+  }
+
+  document.getElementById("bt-clear").addEventListener("click", function () {
+    W = NAMES.map(function () { return new Array(n).fill(0); });
+    render();
+  });
+  document.getElementById("bt-preset").addEventListener("click", function () {
+    W = PRESET.map(function (r) { return r.slice(); });
+    render();
+  });
+  document.getElementById("bt-sim").addEventListener("click", function () {
+    // Sample battles from hidden "true" strengths so the fit converges toward them.
+    var truth = [1.2, 0.6, 0.0, -0.9];
+    for (var b = 0; b < 30; b++) {
+      var i = Math.floor(Math.random() * n), j = Math.floor(Math.random() * n);
+      if (i === j) { b--; continue; }
+      if (Math.random() < sigmoid(truth[i] - truth[j])) W[i][j]++; else W[j][i]++;
+    }
+    render();
+  });
+  selA.addEventListener("change", render);
+  selB.addEventListener("change", render);
+
+  render();
+})();
+</script>
+</body>
+</html>
